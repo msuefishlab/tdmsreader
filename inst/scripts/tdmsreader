@@ -1,8 +1,9 @@
 #!/usr/bin/env Rscript
 
 library(stringr)
-library(R.utils)
 library(futile.logger)
+
+flog.threshold(DEBUG)
 
 #definitions
 kTocMetaData <- bitwShiftL(1, 1)
@@ -36,6 +37,20 @@ tdsDataType[["524300"]] <- "tdsTypeComplexSingleFloat"
 tdsDataType[["1048589"]] <- "tdsTypeComplexDoubleFloat"
 tdsDataType[["-1"]] <- "tdsTypeDAQmxRawData"
 
+tdsDataLen <- new.env()
+
+tdsDataType[["tdsTypeVoid"]] = 4
+tdsDataType[["tdsTypeI8"]] = 1
+tdsDataType[["tdsTypeI16"]] = 2
+tdsDataType[["tdsTypeI32"]] = 4
+tdsDataType[["tdsTypeI64"]] = 8
+tdsDataType[["tdsTypeU8"]] = 4
+tdsDataType[["tdsTypeU16"]] = 8
+tdsDataType[["tdsTypeU32"]] = 16
+tdsDataType[["tdsTypeU64"]] = 32
+tdsDataType[["tdsTypeSingleFloat"]] = 4
+tdsDataType[["tdsTypeDoubleFloat"]] = 8
+
 
 options <- commandArgs(trailingOnly = TRUE)
 if (length(options) < 1) {
@@ -57,8 +72,7 @@ rawDataOffset <- readBin(f, integer(), size = 8)
 flog.debug("raw %d\n", rawDataOffset);
 
 
-#meta
-tdmsObject <- new.env()
+tdmsObjects <- new.env()
 nObjects <- readBin(f, integer(), size = 4)
 
 for(j in 1:nObjects) {
@@ -67,14 +81,14 @@ for(j in 1:nObjects) {
 
     # todo add !kTocNewObjList
     self <- new.env()
-    tdmsObject[[objectPath]] <- self
+    tdmsObjects[[objectPath]] <- self
     
-    flog.debug("object path %s\n", objectPath)
+    flog.debug("object: %s\n", objectPath)
 
 
     # read metadata
     rawDataIndex <- readBin(f, integer(), size = 4)
-    printf("rawData %x\n", rawDataIndex)
+    flog.debug("rawData %x\n", rawDataIndex)
     if (rawDataIndex == 0xffffffff) {
         flog.debug("Object has no data in this segment")
         self[["hasData"]] <- FALSE
@@ -86,7 +100,19 @@ for(j in 1:nObjects) {
 
         s <- readBin(f, integer(), size = 4)
         self[["dataType"]] <- tdsDataType[[as.character(s)]]
-        flog.debug("dataType %x\n", dataType, self[["dataType"]])
+        flog.debug("dataType %x\n", s, self[["dataType"]])
+
+        self[["dimension"]] <- readBin(f, integer(), size = 4)
+        stopifnot(self[["dimension"]] == 1)
+
+
+        self[["nVals"]] <- readBin(f, integer(), size = 8)
+        
+        if (self[["dataType"]] == "tdsTypeString") {
+            self[["dataSize"]] <- readBin(f, integer(), size = 8)
+        } else {
+            self[["dataSize"]] <- self[["nVals"]] * tdsDataLen[[self[["dataType"]]]] * self[["dimension"]]
+        }
     }
     
 #    else if (rawDataIndex != 0xffffffff) {
