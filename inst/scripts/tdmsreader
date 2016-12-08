@@ -13,31 +13,34 @@ kTocNewObjList = bitwShiftL(1, 2)
 
 tdsDataType <- new.env()
 
-tdsDataType[["0"]] <- "tdsTypeVoid" # void
-tdsDataType[["1"]] <- "tdsTypeI8" # int8
+tdsDataType[["0"]] <- "tdsTypeVoid"
+tdsDataType[["1"]] <- "tdsTypeI8"
 tdsDataType[["2"]] <- "tdsTypeI16"# int16
-tdsDataType[["3"]] <- "tdsTypeI32" # int32
-tdsDataType[["4"]] <- "tdsTypeI64" # int64
-tdsDataType[["5"]] <- "tdsTypeU8" # uint8
-tdsDataType[["6"]] <- "tdsTypeU16" # uint16
-tdsDataType[["7"]] <- "tdsTypeU32" # uint32
-tdsDataType[["8"]] <- "tdsTypeU64" # uint64
-tdsDataType[["9"]] <- "tdsTypeSingleFloat" # float
-tdsDataType[["10"]] <- "tdsTypeDoubleFloat" # double
-tdsDataType[["11"]] <- "tdsTypeExtendedFloat" extended double
-tdsDataType[["25"]] <- "tdsTypeSingleFloatWithUnit" # float with unit
-tdsDataType[["12"]] <- "tdsTypeDoubleFloatWithUnit" # double with unit
-tdsDataType[["13"]] <- "tdsTypeExtendedFloatWithUnit" # extended float with unit
-tdsDataType[["32"]] <- "tdsTypeString" # extended float with unit
-tdsDataType[["33"]] <- "tdsTypeBoolean" # boolean
-tdsDataType[["68"]] <- "tdsTypeTimeStamp" # timestamp
-tdsDataType[["79"]] <- "tdsTypeFixedPoint" # fixedpoint
-tdsDataType[["524300"]] <- "tdsTypeComplexSingleFloat" # complex single float
-tdsDataType[["1048589"]] <- "tdsTypeComplexDoubleFloat" # complex double float
-tdsDataType[["-1"]] <- "tdsTypeDAQmxRawData" # daqmx raw data
+tdsDataType[["3"]] <- "tdsTypeI32"
+tdsDataType[["4"]] <- "tdsTypeI64"
+tdsDataType[["5"]] <- "tdsTypeU8"
+tdsDataType[["6"]] <- "tdsTypeU16"
+tdsDataType[["7"]] <- "tdsTypeU32"
+tdsDataType[["8"]] <- "tdsTypeU64"
+tdsDataType[["9"]] <- "tdsTypeSingleFloat"
+tdsDataType[["10"]] <- "tdsTypeDoubleFloat"
+tdsDataType[["11"]] <- "tdsTypeExtendedFloat"
+tdsDataType[["25"]] <- "tdsTypeSingleFloatWithUnit"
+tdsDataType[["12"]] <- "tdsTypeDoubleFloatWithUnit"
+tdsDataType[["13"]] <- "tdsTypeExtendedFloatWithUnit"
+tdsDataType[["32"]] <- "tdsTypeString"
+tdsDataType[["33"]] <- "tdsTypeBoolean"
+tdsDataType[["68"]] <- "tdsTypeTimeStamp"
+tdsDataType[["79"]] <- "tdsTypeFixedPoint"
+tdsDataType[["524300"]] <- "tdsTypeComplexSingleFloat"
+tdsDataType[["1048589"]] <- "tdsTypeComplexDoubleFloat"
+tdsDataType[["-1"]] <- "tdsTypeDAQmxRawData"
 
 
 options <- commandArgs(trailingOnly = TRUE)
+if(length(options) < 1) {
+    stop("Usage: tdmsreader <file>")
+}
 f = file(options[1], "rb")
 
 
@@ -57,53 +60,53 @@ tdmsObject <- new.env()
 nObjects = readBin(f, integer(), size = 4)
 
 for(j in 1:nObjects) {
-  pathLen = readBin(f, integer(), size = 4)
-  objectPath = readChar(f, pathLen)
+    pathLen = readBin(f, integer(), size = 4)
+    objectPath = readChar(f, pathLen)
 
-  # todo add !kTocNewObjList
-  self <- new.env()
-  tdmsObject[[objectPath]] <- self
-  
-  flog.debug("object path %s\n", objectPath)
+    # todo add !kTocNewObjList
+    self <- new.env()
+    tdmsObject[[objectPath]] <- self
+    
+    flog.debug("object path %s\n", objectPath)
 
 
-  # read metadata
-  rawDataIndex = readBin(f, integer(), size = 4)
-  printf("rawData %x\n", rawDataIndex)
-  if(rawDataIndex == 0xffffffff) {
-    flog.debug("Object has no data in this segment")
-    self[["hasData"]] = FALSE
-  } elsif(rawDataIndex == 0x00000000) {
-    flog.debug("Object has same data structure as in previous segment")
-    self[["hasData"]] = TRUE
-  } else {
-    self[["hasData"]] = TRUE
-
-    s = readBin(f, integer(), size = 4)
-    self[["dataType"]] = tdsDataType[[as.character(s)]]
-    flog.debug("dataType %x\n", dataType, self[["dataType"]])
-  } else if(rawDataIndex != 0xffffffff) {
-    nPropGroup = readBin(f, integer(), size = 4)
-    if(nPropGroup == 0) {
-      flog.debug("No properties for %s\n", objectPath)
+    # read metadata
+    rawDataIndex = readBin(f, integer(), size = 4)
+    printf("rawData %x\n", rawDataIndex)
+    if(rawDataIndex == 0xffffffff) {
+        flog.debug("Object has no data in this segment")
+        self[["hasData"]] = FALSE
+    } elsif(rawDataIndex == 0x00000000) {
+        flog.debug("Object has same data structure as in previous segment")
+        self[["hasData"]] = TRUE
     } else {
-      for(i in 1:nPropGroup) {
-        propNameLen = readBin(f, integer(), size = 4)
-        propertyName = readChar(f, propNameLen)
-        propType = readBin(f, integer(), size = 4)
-        
-        printf("propType 0x%x\n", propType)
-        if(propType == 32) {
-          propLength = readBin(f, integer(), size = 4)
-          propVal = readChar(f, propLength)
-          printf("%s = %s\n", propertyName, propVal)
+        self[["hasData"]] = TRUE
+
+        s = readBin(f, integer(), size = 4)
+        self[["dataType"]] = tdsDataType[[as.character(s)]]
+        flog.debug("dataType %x\n", dataType, self[["dataType"]])
+    } else if(rawDataIndex != 0xffffffff) {
+        nPropGroup = readBin(f, integer(), size = 4)
+        if(nPropGroup == 0) {
+            flog.debug("No properties for %s\n", objectPath)
         } else {
-          prop = readBin(f, integer(), size = 4)
-          printf("%s = %d [ns]\n", propertyName, prop, propType)
+            for(i in 1:nPropGroup) {
+                propNameLen = readBin(f, integer(), size = 4)
+                propertyName = readChar(f, propNameLen)
+                propType = readBin(f, integer(), size = 4)
+                
+                printf("propType 0x%x\n", propType)
+                if(propType == 32) {
+                    propLength = readBin(f, integer(), size = 4)
+                    propVal = readChar(f, propLength)
+                    printf("%s = %s\n", propertyName, propVal)
+                } else {
+                    prop = readBin(f, integer(), size = 4)
+                    printf("%s = %d [ns]\n", propertyName, prop, propType)
+                }
+            }
         }
-      }
     }
-  }
 }
 
 close(f)
