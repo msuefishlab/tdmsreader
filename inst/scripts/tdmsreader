@@ -5,11 +5,11 @@ library(R.utils)
 library(futile.logger)
 
 #definitions
-kTocMetaData = bitwShiftL(1, 1)
-kTocRawData = bitwShiftL(1, 3)
-kTocDAQmxRawData = bitwShiftL(1, 7)
-kTocInterleavedData = bitwShiftL(1, 5)
-kTocNewObjList = bitwShiftL(1, 2)
+kTocMetaData <- bitwShiftL(1, 1)
+kTocRawData <- bitwShiftL(1, 3)
+kTocDAQmxRawData <- bitwShiftL(1, 7)
+kTocInterleavedData <- bitwShiftL(1, 5)
+kTocNewObjList <- bitwShiftL(1, 2)
 
 tdsDataType <- new.env()
 
@@ -38,30 +38,32 @@ tdsDataType[["-1"]] <- "tdsTypeDAQmxRawData"
 
 
 options <- commandArgs(trailingOnly = TRUE)
-if(length(options) < 1) {
+if (length(options) < 1) {
     stop("Usage: tdmsreader <file>")
 }
-f = file(options[1], "rb")
+f <- file(options[1], "rb")
 
 
 #lead in
-version =  readChar(f, 4)
-stopifnot(version == "TDSm")
-kTocType = readBin(f, integer(), size = 4)
-version = readBin(f, integer(), size = 4)
-nextSegmentOffset = readBin(f, integer(), size = 8)
-rawDataOffset = readBin(f, integer(), size = 8)
+version <- readChar(f, 4)
+if (version != "TDSm") {
+    flog.error("File format error")
+}
+kTocType <- readBin(f, integer(), size = 4)
+version <- readBin(f, integer(), size = 4)
+nextSegmentOffset <- readBin(f, integer(), size = 8)
+rawDataOffset <- readBin(f, integer(), size = 8)
 
 flog.debug("raw %d\n", rawDataOffset);
 
 
 #meta
 tdmsObject <- new.env()
-nObjects = readBin(f, integer(), size = 4)
+nObjects <- readBin(f, integer(), size = 4)
 
 for(j in 1:nObjects) {
-    pathLen = readBin(f, integer(), size = 4)
-    objectPath = readChar(f, pathLen)
+    pathLen <- readBin(f, integer(), size = 4)
+    objectPath <- readChar(f, pathLen)
 
     # todo add !kTocNewObjList
     self <- new.env()
@@ -71,47 +73,44 @@ for(j in 1:nObjects) {
 
 
     # read metadata
-    rawDataIndex = readBin(f, integer(), size = 4)
+    rawDataIndex <- readBin(f, integer(), size = 4)
     printf("rawData %x\n", rawDataIndex)
-    if(rawDataIndex == 0xffffffff) {
+    if (rawDataIndex == 0xffffffff) {
         flog.debug("Object has no data in this segment")
-        self[["hasData"]] = FALSE
-    } elsif(rawDataIndex == 0x00000000) {
+        self[["hasData"]] <- FALSE
+    } else if (rawDataIndex == 0x00000000) {
         flog.debug("Object has same data structure as in previous segment")
-        self[["hasData"]] = TRUE
+        self[["hasData"]] <- TRUE
     } else {
-        self[["hasData"]] = TRUE
+        self[["hasData"]] <- TRUE
 
-        s = readBin(f, integer(), size = 4)
-        self[["dataType"]] = tdsDataType[[as.character(s)]]
+        s <- readBin(f, integer(), size = 4)
+        self[["dataType"]] <- tdsDataType[[as.character(s)]]
         flog.debug("dataType %x\n", dataType, self[["dataType"]])
-    } else if(rawDataIndex != 0xffffffff) {
-        nPropGroup = readBin(f, integer(), size = 4)
-        if(nPropGroup == 0) {
-            flog.debug("No properties for %s\n", objectPath)
-        } else {
-            for(i in 1:nPropGroup) {
-                propNameLen = readBin(f, integer(), size = 4)
-                propertyName = readChar(f, propNameLen)
-                propType = readBin(f, integer(), size = 4)
-                
-                printf("propType 0x%x\n", propType)
-                if(propType == 32) {
-                    propLength = readBin(f, integer(), size = 4)
-                    propVal = readChar(f, propLength)
-                    printf("%s = %s\n", propertyName, propVal)
-                } else {
-                    prop = readBin(f, integer(), size = 4)
-                    printf("%s = %d [ns]\n", propertyName, prop, propType)
-                }
-            }
-        }
     }
+    
+#    else if (rawDataIndex != 0xffffffff) {
+#        nPropGroup = readBin(f, integer(), size = 4)
+#        if (nPropGroup == 0) {
+#            flog.debug("No properties for %s\n", objectPath)
+#        } else {
+#            for(i in 1:nPropGroup) {
+#                propNameLen = readBin(f, integer(), size = 4)
+#                propertyName = readChar(f, propNameLen)
+#                propType = readBin(f, integer(), size = 4)
+#                
+#                printf("propType 0x%x\n", propType)
+#                if (propType == 32) {
+#                    propLength = readBin(f, integer(), size = 4)
+#                    propVal = readChar(f, propLength)
+#                    printf("%s = %s\n", propertyName, propVal)
+#                } else {
+#                    prop = readBin(f, integer(), size = 4)
+#                    printf("%s = %d [ns]\n", propertyName, prop, propType)
+#                }
+#            }
+#        }
+#    }
 }
 
 close(f)
-
-
-
-
-
