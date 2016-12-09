@@ -49,6 +49,7 @@ tdsDataLen[["tdsTypeU32"]] = 16
 tdsDataLen[["tdsTypeU64"]] = 32
 tdsDataLen[["tdsTypeSingleFloat"]] = 4
 tdsDataLen[["tdsTypeDoubleFloat"]] = 8
+tdsDataLen[["tdsTypeTimeStamp"]] = 16
 
 
 tdmsObjects <- new.env()
@@ -100,21 +101,16 @@ for(j in 1:nObjects) {
 
 
     rawDataIndex <- readBin(f, integer(), size = 4)
-    flog.debug("rawData %x", rawDataIndex)
     if (rawDataIndex == -1) {
-        flog.debug("Object has no data in this segment")
         self[["hasData"]] <- FALSE
     } else if (rawDataIndex == 0x00000000) {
         flog.debug("Object has same data structure as in previous segment")
         self[["hasData"]] <- TRUE
     } else {
-        flog.debug("rawDataIndex %d", rawDataIndex)
         self[["hasData"]] <- TRUE
 
         s <- readBin(f, integer(), size = 4)
         self[["dataType"]] <- tdsDataType[[as.character(s)]]
-        flog.debug("dataType %d %s", s, self[["dataType"]])
-
         self[["dimension"]] <- readBin(f, integer(), size = 4)
         #stopifnot(self[["dimension"]] == 1)
 
@@ -136,14 +132,16 @@ for(j in 1:nObjects) {
             propertyName = readString(f)
             propType = readBin(f, integer(), size = 4)
             
-            flog.debug("propType 0x%x", propType)
             if (propType == 32) {
-                propLength = readBin(f, integer(), size = 4)
-                propVal = readChar(f, propLength)
+                propVal = readString(f)
                 flog.debug("%s = %s", propertyName, propVal)
+            } else if (propType == 68) {
+                s_frac = readBin(f, integer(), size = 8)
+                s = readBin(f, integer(), size = 8)
+                flog.debug("%d %d", s, s_frac)
             } else {
                 prop = readBin(f, integer(), size = 4)
-                flog.debug("%s = %d [ns]", propertyName, prop, propType)
+                flog.debug("%s = %d %d [ns]", propertyName, prop, propType)
             }
         }
     }
