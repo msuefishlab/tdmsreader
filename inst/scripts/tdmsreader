@@ -1,6 +1,5 @@
 #!/usr/bin/env Rscript
 
-library(stringr)
 library(futile.logger)
 
 flog.threshold(DEBUG)
@@ -16,7 +15,7 @@ tdsDataType <- new.env()
 
 tdsDataType[["0"]] <- "tdsTypeVoid"
 tdsDataType[["1"]] <- "tdsTypeI8"
-tdsDataType[["2"]] <- "tdsTypeI16"# int16
+tdsDataType[["2"]] <- "tdsTypeI16"
 tdsDataType[["3"]] <- "tdsTypeI32"
 tdsDataType[["4"]] <- "tdsTypeI64"
 tdsDataType[["5"]] <- "tdsTypeU8"
@@ -39,23 +38,29 @@ tdsDataType[["-1"]] <- "tdsTypeDAQmxRawData"
 
 tdsDataLen <- new.env()
 
-tdsDataType[["tdsTypeVoid"]] = 4
-tdsDataType[["tdsTypeI8"]] = 1
-tdsDataType[["tdsTypeI16"]] = 2
-tdsDataType[["tdsTypeI32"]] = 4
-tdsDataType[["tdsTypeI64"]] = 8
-tdsDataType[["tdsTypeU8"]] = 4
-tdsDataType[["tdsTypeU16"]] = 8
-tdsDataType[["tdsTypeU32"]] = 16
-tdsDataType[["tdsTypeU64"]] = 32
-tdsDataType[["tdsTypeSingleFloat"]] = 4
-tdsDataType[["tdsTypeDoubleFloat"]] = 8
+tdsDataLen[["tdsTypeVoid"]] = 4
+tdsDataLen[["tdsTypeI8"]] = 1
+tdsDataLen[["tdsTypeI16"]] = 2
+tdsDataLen[["tdsTypeI32"]] = 4
+tdsDataLen[["tdsTypeI64"]] = 8
+tdsDataLen[["tdsTypeU8"]] = 4
+tdsDataLen[["tdsTypeU16"]] = 8
+tdsDataLen[["tdsTypeU32"]] = 16
+tdsDataLen[["tdsTypeU64"]] = 32
+tdsDataLen[["tdsTypeSingleFloat"]] = 4
+tdsDataLen[["tdsTypeDoubleFloat"]] = 8
+
+
+tdmsObjects <- new.env()
 
 
 options <- commandArgs(trailingOnly = TRUE)
 if (length(options) < 1) {
     stop("Usage: tdmsreader <file>")
 }
+
+
+# open file
 f <- file(options[1], "rb")
 
 
@@ -64,46 +69,54 @@ version <- readChar(f, 4)
 if (version != "TDSm") {
     flog.error("File format error")
 }
+
+
 kTocType <- readBin(f, integer(), size = 4)
 version <- readBin(f, integer(), size = 4)
 nextSegmentOffset <- readBin(f, integer(), size = 8)
 rawDataOffset <- readBin(f, integer(), size = 8)
 
-flog.debug("raw %d\n", rawDataOffset);
+flog.debug("raw %d", rawDataOffset)
+flog.debug("kTocType 0x%02x", kTocType)
 
-
-tdmsObjects <- new.env()
 nObjects <- readBin(f, integer(), size = 4)
 
+flog.debug("nObjects %d", nObjects)
+
+
+readString <- function(f) {
+    s <- readBin(f, integer(), size = 4)
+    readChar(f, s)
+}
+
 for(j in 1:nObjects) {
-    pathLen <- readBin(f, integer(), size = 4)
-    objectPath <- readChar(f, pathLen)
+    objectPath <- readString(f)
 
     # todo add !kTocNewObjList
     self <- new.env()
     tdmsObjects[[objectPath]] <- self
     
-    flog.debug("object: %s\n", objectPath)
+    flog.debug("object: %s", objectPath)
 
 
-    # read metadata
     rawDataIndex <- readBin(f, integer(), size = 4)
-    flog.debug("rawData %x\n", rawDataIndex)
-    if (rawDataIndex == 0xffffffff) {
+    flog.debug("rawData %x", rawDataIndex)
+    if (rawDataIndex == -1) {
         flog.debug("Object has no data in this segment")
         self[["hasData"]] <- FALSE
     } else if (rawDataIndex == 0x00000000) {
         flog.debug("Object has same data structure as in previous segment")
         self[["hasData"]] <- TRUE
     } else {
+        flog.debug("rawDataIndex %d", rawDataIndex)
         self[["hasData"]] <- TRUE
 
         s <- readBin(f, integer(), size = 4)
         self[["dataType"]] <- tdsDataType[[as.character(s)]]
-        flog.debug("dataType %x\n", s, self[["dataType"]])
+        flog.debug("dataType %d %s", s, self[["dataType"]])
 
         self[["dimension"]] <- readBin(f, integer(), size = 4)
-        stopifnot(self[["dimension"]] == 1)
+        #stopifnot(self[["dimension"]] == 1)
 
 
         self[["nVals"]] <- readBin(f, integer(), size = 8)
@@ -115,28 +128,25 @@ for(j in 1:nObjects) {
         }
     }
     
-#    else if (rawDataIndex != 0xffffffff) {
-#        nPropGroup = readBin(f, integer(), size = 4)
-#        if (nPropGroup == 0) {
-#            flog.debug("No properties for %s\n", objectPath)
-#        } else {
-#            for(i in 1:nPropGroup) {
-#                propNameLen = readBin(f, integer(), size = 4)
-#                propertyName = readChar(f, propNameLen)
-#                propType = readBin(f, integer(), size = 4)
-#                
-#                printf("propType 0x%x\n", propType)
-#                if (propType == 32) {
-#                    propLength = readBin(f, integer(), size = 4)
-#                    propVal = readChar(f, propLength)
-#                    printf("%s = %s\n", propertyName, propVal)
-#                } else {
-#                    prop = readBin(f, integer(), size = 4)
-#                    printf("%s = %d [ns]\n", propertyName, prop, propType)
-#                }
-#            }
-#        }
-#    }
+    nPropGroup = readBin(f, integer(), size = 4)
+    if (nPropGroup == 0) {
+        flog.debug("No properties for %s", objectPath)
+    } else {
+        for(i in 1:nPropGroup) {
+            propertyName = readString(f)
+            propType = readBin(f, integer(), size = 4)
+            
+            flog.debug("propType 0x%x", propType)
+            if (propType == 32) {
+                propLength = readBin(f, integer(), size = 4)
+                propVal = readChar(f, propLength)
+                flog.debug("%s = %s", propertyName, propVal)
+            } else {
+                prop = readBin(f, integer(), size = 4)
+                flog.debug("%s = %d [ns]", propertyName, prop, propType)
+            }
+        }
+    }
 }
 
 close(f)
