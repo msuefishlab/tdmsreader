@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 
 library(futile.logger)
+library(magrittr)
 
 flog.threshold(DEBUG)
 
@@ -90,6 +91,26 @@ readString <- function(f) {
     readChar(f, s)
 }
 
+
+readType <- function(f, type) {
+    s <- 0
+    if(type == 12 || type == 10) {
+        s <- readBin(f, numeric(), size = 8)
+    }
+    else if(type == 25 || type == 9) {
+        s <- readBin(f, numeric(), size = 4)
+    }
+    else if(type == 68) {
+        s_frac <- readBin(f, integer(), size = 8)
+        s_t <- readBin(f, integer(), size = 8)
+        s <- s_t + s_frac / 2^64
+    }
+    else {
+        s <- 0
+    }
+    s
+}
+
 for(j in 1:nObjects) {
     objectPath <- readString(f)
 
@@ -129,21 +150,19 @@ for(j in 1:nObjects) {
         flog.debug("No properties for %s", objectPath)
     } else {
         for(i in 1:nPropGroup) {
-            propertyName = readString(f)
+            propName = readString(f)
             propType = readBin(f, integer(), size = 4)
+            self[["propType"]] <- propType
             
             if (propType == 32) {
-                propVal = readString(f)
-                flog.debug("%s = %s", propertyName, propVal)
-            } else if (propType == 68) {
-                s_frac = readBin(f, integer(), size = 8)
-                s = readBin(f, integer(), size = 8)
-                flog.debug("%d %d", s, s_frac)
+                s = readString(f)
+                flog.debug("%s = %s", propName, s)
             } else {
-                prop = readBin(f, integer(), size = 4)
-                flog.debug("%s = %d %d [ns]", propertyName, prop, propType)
+                s = readType(f, propType)
+                flog.debug("blagh %s = %f %d [ns]", propName, s, propType)
             }
         }
+        flog.debug("FADS")
     }
 }
 
