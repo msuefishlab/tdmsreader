@@ -12,45 +12,20 @@ kTocDAQmxRawData <- bitwShiftL(1, 7)
 kTocInterleavedData <- bitwShiftL(1, 5)
 kTocNewObjList <- bitwShiftL(1, 2)
 
-tdsDataType <- new.env()
-
-tdsDataType[["0"]] <- "tdsTypeVoid"
-tdsDataType[["1"]] <- "tdsTypeI8"
-tdsDataType[["2"]] <- "tdsTypeI16"
-tdsDataType[["3"]] <- "tdsTypeI32"
-tdsDataType[["4"]] <- "tdsTypeI64"
-tdsDataType[["5"]] <- "tdsTypeU8"
-tdsDataType[["6"]] <- "tdsTypeU16"
-tdsDataType[["7"]] <- "tdsTypeU32"
-tdsDataType[["8"]] <- "tdsTypeU64"
-tdsDataType[["9"]] <- "tdsTypeSingleFloat"
-tdsDataType[["10"]] <- "tdsTypeDoubleFloat"
-tdsDataType[["11"]] <- "tdsTypeExtendedFloat"
-tdsDataType[["25"]] <- "tdsTypeSingleFloatWithUnit"
-tdsDataType[["12"]] <- "tdsTypeDoubleFloatWithUnit"
-tdsDataType[["13"]] <- "tdsTypeExtendedFloatWithUnit"
-tdsDataType[["32"]] <- "tdsTypeString"
-tdsDataType[["33"]] <- "tdsTypeBoolean"
-tdsDataType[["68"]] <- "tdsTypeTimeStamp"
-tdsDataType[["79"]] <- "tdsTypeFixedPoint"
-tdsDataType[["524300"]] <- "tdsTypeComplexSingleFloat"
-tdsDataType[["1048589"]] <- "tdsTypeComplexDoubleFloat"
-tdsDataType[["-1"]] <- "tdsTypeDAQmxRawData"
-
-tdsDataLen <- new.env()
-
-tdsDataLen[["tdsTypeVoid"]] = 4
-tdsDataLen[["tdsTypeI8"]] = 1
-tdsDataLen[["tdsTypeI16"]] = 2
-tdsDataLen[["tdsTypeI32"]] = 4
-tdsDataLen[["tdsTypeI64"]] = 8
-tdsDataLen[["tdsTypeU8"]] = 4
-tdsDataLen[["tdsTypeU16"]] = 8
-tdsDataLen[["tdsTypeU32"]] = 16
-tdsDataLen[["tdsTypeU64"]] = 32
-tdsDataLen[["tdsTypeSingleFloat"]] = 4
-tdsDataLen[["tdsTypeDoubleFloat"]] = 8
-tdsDataLen[["tdsTypeTimeStamp"]] = 16
+tdsDataType <- list(
+list(length = 0, id = 0, name = "tdsTypeVoid"),
+list(length = 1, id = 1, name = "tdsTypeI8"),
+list(length = 2, id = 2, name = "tdsTypeI16"),
+list(length = 4, id = 3, name = "tdsTypeI32"),
+list(length = 8, id = 4, name = "tdsTypeI64"),
+list(length = 1, id = 5, name = "tdsTypeU8"),
+list(length = 2, id = 6, name = "tdsTypeU16"),
+list(length = 4, id = 7, name = "tdsTypeU32"),
+list(length = 8, id = 8, name = "tdsTypeU64"),
+list(length = 4, id = 9, name ="tdsTypeSingleFloat"),
+list(length = 8, id = 10, name = "tdsTypeDoubleFloat"),
+list(length = 16, id = 68, name = "tdsTypeTimeStamp")
+)
 
 
 tdmsObjects <- new.env()
@@ -89,6 +64,18 @@ flog.debug("kTocType 0x%02x", kTocType)
 nObjects <- readBin(f, integer(), size = 4)
 
 flog.debug("nObjects %d", nObjects)
+
+
+getType <- function(id) {
+	for(elt in tdsDataType) {
+		if(elt$id == id) {
+			return (elt)
+		}
+	}
+	return (NULL)
+}
+
+
 
 
 readString <- function(f) {
@@ -185,17 +172,17 @@ for(j in 1:nObjects) {
         self$has_data <- TRUE
 
         s <- readBin(f, integer(), size = 4)
-        self$data_type <- tdsDataType[[as.character(s)]]
+        self$data_type <- getType(s)
         self$dimension <- readBin(f, integer(), size = 4)
         #stopifnot(self$dimension == 1)
 
 
         self$nVals <- readBin(f, integer(), size = 8)
         
-        if (self$data_type == "tdsTypeString") {
+        if (self$data_type$name == "tdsTypeString") {
             self$data_size <- readBin(f, integer(), size = 8)
         } else {
-            self$data_size <- self$nVals * tdsDataLen[[self$data_type]] * self$dimension
+            self$data_size <- self$nVals * self$data_type$len * self$dimension
         }
     }
     
