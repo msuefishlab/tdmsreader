@@ -75,10 +75,15 @@ if (version != "TDSm") {
 
 kTocType <- readBin(f, integer(), size = 4)
 version <- readBin(f, integer(), size = 4)
-nextSegmentOffset <- readBin(f, integer(), size = 8)
-rawDataOffset <- readBin(f, integer(), size = 8)
+next_segment_offset <- readBin(f, integer(), size = 8)
+raw_data_offset <- readBin(f, integer(), size = 8)
 
-flog.debug("raw %d", rawDataOffset)
+
+# Calculate data and next segment position
+leadSize = 7 * 4
+data_position = leadSize + raw_data_offset
+
+flog.debug("raw %d", raw_data_offset)
 flog.debug("kTocType 0x%02x", kTocType)
 
 nObjects <- readBin(f, integer(), size = 4)
@@ -123,60 +128,103 @@ readType <- function(f, type) {
     s
 }
 
+calculateChunks <- function(self) {
+    data_size = sum(sapply(self.ordered_objects, function(elt) { elt.data_size }))
+
+    total_data_size = next_segment_offset - raw_data_offset
+
+	num_chunks = 0
+
+    if (data_size < 0 || total_data_size < 0) {
+        stop("Negative data size")
+    } else if (data_size == 0) {
+        if (total_data_size != data_size) {
+            stop("Zero channel data size but non-zero data length based on segment offset.")
+        }
+		return(0)
+    }
+    chunk_remainder = mod(total_data_size, data_size)
+    if (chunk_remainder == 0) {
+        self.num_chunks = total_data_size
+        for (obj in self.ordered_objects) {
+            if (obj.has_data) {
+                obj.tdms_object.number_values = obj/tdms_object.number_values + (obj.number_values * self.num_chunks)
+            }
+        }
+    } else {
+        flog.warning("Data size %d is not a multiple of the chunk size %d. Will attempt to read last chunk", total_data_size, data_size)
+        self.num_chunks = 1 + total_data_size
+        self.final_chunk_proportion = chunk_remainder / data_size
+
+        for (obj in self.ordered_objects) {
+            if (obj.has_data) {
+                obj.tdms_object.number_values = obj.tdms_object.number_values + (obj.number_values * (self.num_chunks - 1) + int(obj.number_values * self.final_chunk_proportion))
+            }
+        }
+    }
+}
+
 for(j in 1:nObjects) {
-    objectPath <- readString(f)
+    object_path <- readString(f)
 
     # todo add !kTocNewObjList
     self <- new.env()
-    tdmsObjects[[objectPath]] <- self
+    tdmsObjects[[object_path]] <- self
     
-    flog.debug("object: %s", objectPath)
+    flog.debug("object: %s", object_path)
 
 
-    rawDataIndex <- readBin(f, integer(), size = 4)
-    if (rawDataIndex == -1) {
-        self[["hasData"]] <- FALSE
-    } else if (rawDataIndex == 0x00000000) {
+    raw_data_index <- readBin(f, integer(), size = 4)
+    if (raw_data_index == -1) {
+        self[["has_data"]] <- FALSE
+    } else if (raw_data_index == 0x00000000) {
         flog.debug("Object has same data structure as in previous segment")
-        self[["hasData"]] <- TRUE
+        self[["has_data"]] <- TRUE
     } else {
-        self[["hasData"]] <- TRUE
+        self[["has_data"]] <- TRUE
 
         s <- readBin(f, integer(), size = 4)
-        self[["dataType"]] <- tdsDataType[[as.character(s)]]
+        self[["data_type"]] <- tdsDataType[[as.character(s)]]
         self[["dimension"]] <- readBin(f, integer(), size = 4)
         #stopifnot(self[["dimension"]] == 1)
 
 
         self[["nVals"]] <- readBin(f, integer(), size = 8)
         
-        if (self[["dataType"]] == "tdsTypeString") {
-            self[["dataSize"]] <- readBin(f, integer(), size = 8)
+        if (self[["data_type"]] == "tdsTypeString") {
+            self[["data_size"]] <- readBin(f, integer(), size = 8)
         } else {
-            self[["dataSize"]] <- self[["nVals"]] * tdsDataLen[[self[["dataType"]]]] * self[["dimension"]]
+            self[["data_size"]] <- self[["nVals"]] * tdsDataLen[[self[["data_type"]]]] * self[["dimension"]]
         }
     }
     
-    nPropGroup = readBin(f, integer(), size = 4)
-    if (nPropGroup == 0) {
-        flog.debug("No properties for %s", objectPath)
+    num_properties = readBin(f, integer(), size = 4)
+    if (num_properties == 0) {
+        flog.debug("No properties for %s", object_path)
     } else {
-        for(i in 1:nPropGroup) {
-            propName = readString(f)
-            propType = readBin(f, integer(), size = 4)
-            self[["propType"]] <- propType
+        for(i in 1:num_properties) {
+            prop_name = readString(f)
+            prop_type = readBin(f, integer(), size = 4)
+            self[["prop_type"]] <- prop_type
             
-            if (propType == 32) {
+            if (prop_type == 32) {
                 s = readString(f)
-                flog.debug("%s = %s", propName, s)
-                self[["propVal"]] = s
+                flog.debug("%s = %s", prop_name, s)
+                self[["prop_val"]] = s
             } else {
-                s = readType(f, propType)
-                flog.debug("%s = %f %d [ns]", propName, s, propType)
-                self[["propVal"]] = s
+                s = readType(f, prop_type)
+                flog.debug("%s = %f %d [ns]", prop_name, s, prop_type)
+                self[["prop_val"]] = s
             }
         }
     }
+
+
 }
+if(next_segment_offset) {
+    flog.debug("%d",next_segment_offset)
+}
+total_data_size = self.next_segment_offset - self.raw_data_offset
+seek(f, data_position)
 
 close(f)
