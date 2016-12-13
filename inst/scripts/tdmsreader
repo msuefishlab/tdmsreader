@@ -4,7 +4,6 @@ library(futile.logger)
 
 flog.threshold(DEBUG)
 
-#definitions
 tdsDataType <- list(
     list(length = 0, id = 0, name = "tdsTypeVoid"),
     list(length = 1, id = 1, name = "tdsTypeI8"),
@@ -21,7 +20,7 @@ tdsDataType <- list(
 )
 
 
-tdmsObjects <- new.env(hash=T, parent=emptyenv())
+tdms_objects <- list()
 
 
 options <- commandArgs(trailingOnly = TRUE)
@@ -59,7 +58,7 @@ raw_data_offset <- readBin(f, integer(), size = 8)
 lead_size = 7 * 4
 data_position = lead_size + raw_data_offset
 
-nObjects <- readBin(f, integer(), size = 4)
+number_objects <- readBin(f, integer(), size = 4)
 
 
 getType <- function(id) {
@@ -108,10 +107,12 @@ readType <- function(f, type) {
     return (s)
 }
 
-calculateChunks <- function(self) {
-    data_size = sum(sapply(self$ordered_objects, function(elt) {
-		elt$data_size
-	}))
+calculate_chunks <- function(self) {
+    ds = lapply(tdms_objects, function(elt) {
+		return (elt$data_size)
+	})
+    print(unlist(ds))
+    data_size = sum(unlist(ds), na.rm = TRUE)
 
     total_data_size = next_segment_offset - raw_data_offset
 
@@ -124,7 +125,7 @@ calculateChunks <- function(self) {
 		self$num_chunks = 0
 		return (0)
     }
-    chunk_remainder = mod(total_data_size, data_size)
+    chunk_remainder = total_data_size %% data_size
     if (chunk_remainder == 0) {
         self$num_chunks = total_data_size
         for (obj in self$ordered_objects) {
@@ -145,7 +146,7 @@ calculateChunks <- function(self) {
     }
 }
 
-for(j in 1:nObjects) {
+for(j in 1:number_objects) {
     object_path <- readString(f)
 
     # todo add !kTocNewObjList
@@ -196,9 +197,13 @@ for(j in 1:nObjects) {
             }
         }
     }
-    tdmsObjects[[object_path]] <- self
+
+
+    tdms_objects[[object_path]] <- self
 }
-flog.debug("nso %d %d",next_segment_offset, data_position)
+calculate_chunks(self)
+
+flog.debug("nso %d %d", next_segment_offset, data_position)
 
 
 read_raw_data <- function(self, f) {
@@ -216,16 +221,17 @@ read_raw_data <- function(self, f) {
     return (r)
 }
 
+
+
 i = 0
-for(key in ls(tdmsObjects)) {
-    self = tdmsObjects[[key]]
-    print(str(self))
+for(self in tdms_objects) {
     if(self$has_data) {
         r = read_raw_data(self, f)
         png(paste0(i,'.png'))
         plot(r, type='l')
         dev.off()
     }
+    i=i+1
 }
 
 
