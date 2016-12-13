@@ -116,7 +116,7 @@ readType <- function(f, type) {
 }
 
 calculateChunks <- function(self) {
-    data_size = sum(sapply(self.ordered_objects, function(elt) {
+    data_size = sum(sapply(self$ordered_objects, function(elt) {
 		elt$data_size
 	}))
 
@@ -209,10 +209,18 @@ for(j in 1:nObjects) {
 
 
 }
-if(next_segment_offset) {
-    flog.debug("%d",next_segment_offset)
-}
+flog.debug("nso %d %d",next_segment_offset, data_position)
 total_data_size = next_segment_offset - raw_data_offset
 seek(f, data_position)
 
+num_elts = total_data_size / 4
+flog.debug("tds %f", total_data_size)
+r = numeric(num_elts)
+for(i in 1:num_elts) {
+	r[i] = readBin(f, numeric(), size = 4)
+}
+
+png('r.png')
+plot(r,ylim=c(-1000,1000))
+dev.off()
 close(f)
