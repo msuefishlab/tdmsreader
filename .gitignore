@@ -4,3 +4,4 @@
 *~
 *.png
 *.tdms
+.DS_Store
