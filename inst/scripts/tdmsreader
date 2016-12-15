@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 
 library(futile.logger)
+library(R6)
 
 flog.threshold(DEBUG)
 
@@ -20,17 +21,7 @@ list(
     list(length = 16, id = 68, name = "tdsTypeTimeStamp")
 )
 
-tdms_objects = list()
 
-
-options = commandArgs(trailingOnly = TRUE)
-if (length(options) < 1) {
-    stop("Usage: tdmsreader <file>")
-}
-
-
-# open file
-f = file(options[1], "rb")
 
 get_type <- function(id) {
     for (elt in tdsDataType) {
@@ -72,249 +63,274 @@ read_type <- function(f, type) {
     return(s)
 }
 
+TdmsFile <- R6Class("TdmsFile",
+    public = list(
+        objects = new.env(),
+        segments = list(),
+        initialize = function(file) {
+            self$read_segments(file)
+        },
+        read_segments = function(file) {
+            i = 0
+            previous_segment = NULL
+            while(TRUE) {
+                flog.debug("PASS %d %d", i, seek(file))
 
-
-TdmsFile.init <- function(file) {
-	self <- list()
-	self$objects <- new.env()
-	self$segments <- list()
-
-	TdmsFile._read_segments(self, file)
-	return (self)
-}
-
-TdmsFile._read_segments <- function(self, f) {
-	i = 0
-	prev_segment = NULL
-	while(TRUE) {
-		flog.debug("PASS %d %d", i, seek(f))
-		s = TdmsSegment.init(f)
-
-		s = TdmsSegment.read_metadata(s, f, NULL, prev_segment)
-		s = TdmsSegment.read_raw_data(s, f)
-		prev_segment = s
-		i = i + 1
-	}
-}
-
-TdmsSegment.calculate_chunks <- function(self, f) {
-    print(length(self$ordered_objects))
-    ds = lapply(self$ordered_objects, function(elt) {
-		print(elt$data_size)
-        return(elt$data_size)
-    })
-    data_size = sum(unlist(ds))
-
-    
-    total_data_size = self$next_segment_offset - self$raw_data_offset
-    
-    if (data_size < 0 || total_data_size < 0) {
-        stop("Negative data size")
-    } else if (data_size == 0) {
-        if (total_data_size != data_size) {
-            stop("Zero channel data size but non-zero data length based on segment offset.")
-        }
-        self$num_chunks = 0
-        return(self)
-    }
-    chunk_remainder = total_data_size %% data_size
-    if (chunk_remainder == 0) {
-        self$num_chunks = total_data_size %/% data_size
-        for (obj in self$ordered_objects) {
-            if (obj$has_data) {
-                obj$number_values = obj/obj$number_values + (obj$number_values * self$num_chunks)
+                segment = TdmsSegment$new(file)
+                segment$read_metadata(file, self$objects, previous_segment)
+                self$segments[[length(self$segments)+1]] = segment
+                previous_segment = segment
+                if(is.null(segment$next_segment_pos)) {
+                    break
+                } else {
+                    seek(f, segment$next_segment_pos)
+                }
+                i = i + 1
             }
         }
-    } else {
-        flog.error("Data size %d is not a multiple of the chunk size %d. Will attempt to read last chunk", 
-            total_data_size, data_size)
-        self$num_chunks = 1 + total_data_size
-        self$final_chunk_proportion = chunk_remainder/data_size
-        
-        for (obj in self$ordered_objects) {
-            if (obj$has_data) {
-                obj$tdms_object$number_values = obj$tdms_object$number_values + 
-                  (obj$number_values * (self$num_chunks - 1) + obj$number_values * 
-                    self$final_chunk_proportion)
+    )
+)
+
+TdmsSegment <- R6Class("TdmsSegment",
+    public = list(
+        position = NULL,
+        version = NULL,
+        ordered_objects = list(),
+        final_chunk_proportion = 1.0,
+        kTocMetaData = 0,
+        kTocRawData = 0,
+        kTocInterleavedData = 0,
+        kTocDAQmxRawData = 0,
+        kTocBigEndian = 0,
+        kTocNewObjList = 0,
+        next_segment_offset = 0,
+        raw_data_offset = 0,
+        data_position = 0,
+        next_segment_pos = 0,
+        num_chunks = 0,
+
+        initialize = function(f) {
+            self$position = seek(f)
+            self$version = readChar(f, 4)
+            if (self$version != "TDSm") {
+                stop("File format error")
             }
-        }
-    }
-    return(self)
-}
-
-TdmsSegment.init <- function(f) {
-    self = list()
-    self$position = seek(f)
-    self$num_chunks = 0
-    self$ordered_objects = list()
-    self$final_chunk_proportion = 1.0
-
-    self$version = readChar(f, 4)
-    if (self$version != "TDSm") {
-        stop("File format error")
-    }
 
 
-    kTocType = readBin(f, integer(), size = 4)
-    self$kTocMetaData = bitwAnd(kTocType, bitwShiftL(1, 1))
-    self$kTocRawData = bitwAnd(kTocType, bitwShiftL(1, 3))
-    self$kTocDAQmxRawData = bitwAnd(kTocType, bitwShiftL(1, 7))
-    self$kTocInterleavedData = bitwAnd(kTocType, bitwShiftL(1, 5))
-    self$kTocBigEndian = bitwAnd(kTocType, bitwShiftL(1, 6))
-    self$kTocNewObjList = bitwAnd(kTocType, bitwShiftL(1, 2))
+            kTocType = readBin(f, integer(), size = 4)
+            self$kTocMetaData = bitwAnd(kTocType, bitwShiftL(1, 1))
+            self$kTocRawData = bitwAnd(kTocType, bitwShiftL(1, 3))
+            self$kTocDAQmxRawData = bitwAnd(kTocType, bitwShiftL(1, 7))
+            self$kTocInterleavedData = bitwAnd(kTocType, bitwShiftL(1, 5))
+            self$kTocBigEndian = bitwAnd(kTocType, bitwShiftL(1, 6))
+            self$kTocNewObjList = bitwAnd(kTocType, bitwShiftL(1, 2))
 
 
-    self$version = readBin(f, integer(), size = 4)
-    self$next_segment_offset = readBin(f, integer(), size = 8)
-    self$raw_data_offset = readBin(f, integer(), size = 8)
+            self$version = readBin(f, integer(), size = 4)
+            self$next_segment_offset = readBin(f, integer(), size = 8)
+            self$raw_data_offset = readBin(f, integer(), size = 8)
 
 
-    lead_size = 7 * 4
-    self$data_position = self$position + lead_size + self$raw_data_offset
-    self$next_segment_pos = self$position + self$next_segment_offset + lead_size
+            lead_size = 7 * 4
+            self$data_position = self$position + lead_size + self$raw_data_offset
+            self$next_segment_pos = self$position + self$next_segment_offset + lead_size
+        },
 
-    return (self)
-}
+        calculate_chunks = function(file) {
+            ds = lapply(self$ordered_objects, function(elt) {
+                return(elt$data_size)
+            })
+            data_size = sum(unlist(ds))
 
-
-TdmsObject.init <- function(path) {
-    self <- list()
-    self$path = path
-    self$data = NULL
-    self$properties = new.env()
-    self$dimension = 1
-    self$data_type = NULL
-    self$has_data = FALSE
-    self$previous_segment_object = NULL
-    return (self)
-}
-
-TdmsSegment.read_metadata <- function(self, f, objects, previous_segment=NULL) {
-    if(!self$kTocMetaData) {
-        if(!is.na(previous_segment)) {
-            self$ordered_objects = previous_segment$ordered_objects
-        }
-        else {
-            stop("Error no metadata from previous")
-        }
-        self = TdmsSegment.calculate_chunks(self, f)
-        return (self)
-    }
-    if(!self$kTocNewObjList) {
-        if(!is.null(previous_segment)) {
-            self$ordered_objects = previous_segment$ordered_objects
-        }
-        else {
-            stop("Error no previous objects")
-        }
-    }
-
-    num_objects = readBin(f, integer(), size = 4)
-
-    for (j in 1:num_objects) {
-        object_path = read_string(f)
-        obj = TdmsObject.init(object_path)
-        segment_obj = TdmsSegmentObject.init(obj)
-        segment_obj = TdmsSegmentObject._read_metadata(segment_obj)
-        self$ordered_objects[[j]] = segment_obj
-    }
-    self = TdmsSegment.calculate_chunks(self, f)
-    return (self)
-}
-
-TdmsSegmentObject.init <- function(object) {
-    self <- list()
-    self$number_values = 0
-    self$data_size = 0
-    self$has_data = TRUE
-    self$dimension = 1
-    self$data_type = NULL
-    self$tdms_object = object
-
-    return (self)
-}
-
-TdmsSegmentObject._read_metadata <- function(self) {
-    raw_data_index <- readBin(f, integer(), size = 4)
-    if (raw_data_index == -1) {
-        self$has_data = FALSE
-    } else if (raw_data_index == 0) {
-        flog.debug("Object has same data structure as in previous segment")
-        self$has_data = TRUE
-    } else {
-        self$has_data = TRUE
-		self$tdms_object$has_data = TRUE
-        
-        s = readBin(f, integer(), size = 4)
-        self$data_type = get_type(s)
-        self$dimension = readBin(f, integer(), size = 4)
-        self$number_values = readBin(f, integer(), size = 8)
-        
-        if (self$data_type$name == "tdsTypeString") {
-            self$data_size = readBin(f, integer(), size = 8)
-        } else {
-            self$data_size = self$number_values * self$data_type$len * self$dimension
-        }
-    }
-    
-    num_properties = readBin(f, integer(), size = 4)
-    if (num_properties > 0) {
-        for (i in 1:num_properties) {
-            prop_name = read_string(f)
-            self$prop_type = readBin(f, integer(), size = 4)
             
-            if (self$prop_type == 32) {
-                s = read_string(f)
-                flog.debug("%s = %s", prop_name, s)
-                self$tdms_object$properties[[prop_name]] = s
-            } else {
-                s = read_type(f, self$prop_type)
-                flog.debug("%s = %f %d [ns]", prop_name, s, self$prop_type)
-                self$tdms_object.properties[[prop_name]] = s
+            total_data_size = self$next_segment_offset - self$raw_data_offset
+            
+            if (data_size < 0 || total_data_size < 0) {
+                stop("Negative data size")
+            } else if (data_size == 0) {
+                if (total_data_size != data_size) {
+                    stop("Zero channel data size but non-zero data length based on segment offset.")
+                }
+                self$num_chunks = 0
+                return(self)
             }
-        }
-    }
-
-    return (self)
-}
-
-TdmsSegment.read_raw_data <- function(self, f) {
-
-    if(!self$kTocRawData) {
-        flog.debug("No raw data in segment")
-        return
-    }
-
-    seek(f, self$data_position)
-
-    total_data_size = self$next_segment_offset - self$raw_data_offset
-    num_elts = total_data_size/8
-    
-    if(self$num_chunks > 0) {
-        for(i in 1:self$num_chunks) {
-            flog.debug("%d/%d chunks", i, self$num_chunks)
-            for(j in self$ordered_objects) {
-                if(j$has_data) {
-                    data = TdmsSegmentObject.read_values(j, f)
-                    png(paste0('blah',i,'.png'))
-                    plot(data, type='l')
-                    dev.off()
+            chunk_remainder = total_data_size %% data_size
+            if (chunk_remainder == 0) {
+                self$num_chunks = total_data_size %/% data_size
+                for (obj in self$ordered_objects) {
+                    if (obj$has_data) {
+                        obj$number_values = obj$number_values + (obj$number_values * self$num_chunks)
+                    }
+                }
+            } else {
+                flog.error("Data size %d is not a multiple of the chunk size %d. Will attempt to read last chunk", 
+                    total_data_size, data_size)
+                self$num_chunks = 1 + total_data_size
+                self$final_chunk_proportion = chunk_remainder/data_size
+                
+                for (obj in self$ordered_objects) {
+                    if (obj$has_data) {
+                        obj$tdms_object$number_values = obj$tdms_object$number_values + 
+                          (obj$number_values * (self$num_chunks - 1) + obj$number_values * 
+                            self$final_chunk_proportion)
+                    }
                 }
             }
+        },
+
+        read_metadata = function(f, objects, previous_segment=NULL) {
+            if(!self$kTocMetaData) {
+                if(!is.na(previous_segment)) {
+                    self$ordered_objects = previous_segment$ordered_objects
+                }
+                else {
+                    stop("Error no metadata from previous")
+                }
+                self = self$calculate_chunks(self, f)
+                return
+            }
+            if(!self$kTocNewObjList) {
+                if(!is.null(previous_segment)) {
+                    self$ordered_objects = previous_segment$ordered_objects
+                }
+                else {
+                    stop("Error no previous objects")
+                }
+            }
+
+            num_objects = readBin(f, integer(), size = 4)
+
+            for (j in 1:num_objects) {
+                object_path = read_string(f)
+                obj = TdmsObject$new(object_path)
+                segment_obj = TdmsSegmentObject$new(obj)
+                segment_obj$read_metadata(segment_obj)
+                self$ordered_objects[[j]] = segment_obj
+            }
+
+            self$calculate_chunks(f)
+        },
+
+        read_raw_data = function(f) {
+            if(!self$kTocRawData) {
+                flog.debug("No raw data in segment")
+                return
+            }
+            seek(f, self$data_position)
+
+            total_data_size = self$next_segment_offset - self$raw_data_offset
+            num_elts = total_data_size/8
+            
+            if(self$num_chunks > 0) {
+                for(i in 1:self$num_chunks) {
+                    flog.debug("%d/%d chunks", i, self$num_chunks)
+                    for(j in self$ordered_objects) {
+                        if(j$has_data) {
+                            data = j$read_values(f)
+                            png(paste0('blah',i,'.png'))
+                            plot(data, type='l')
+                            dev.off()
+                        }
+                    }
+                }
+            }
+            else {
+                flog.error('No chunks')
+            }
         }
-    }
-    else {
-        flog.error('No chunks')
-    }
+    )
+)
+
+TdmsObject <- R6Class("TdmsObject",
+    public = list(
+        path = NULL,
+        data = NULL,
+        properties = new.env(),
+        dimension = 1,
+        data_type = NULL,
+        has_data = FALSE,
+        previous_segment_object = NULL,
+        initialize = function(path) {
+            self$path = path
+        }
+    )
+)
+
+
+
+
+TdmsSegmentObject <- R6Class("TdmsSegmentObject",
+    public = list(
+        number_values = 0,
+        data_size = 0,
+        has_data = TRUE,
+        dimension = 1,
+        data_type = NULL,
+        tdms_object = NULL,
+        prop_type = NULL,
+        initialize = function(object) {
+            tdms_object = object
+        },
+        read_metadata = function(self) {
+            raw_data_index <- readBin(f, integer(), size = 4)
+            if (raw_data_index == -1) {
+                self$has_data = FALSE
+            } else if (raw_data_index == 0) {
+                flog.debug("Object has same data structure as in previous segment")
+                self$has_data = TRUE
+            } else {
+                self$has_data = TRUE
+                self$tdms_object$has_data = TRUE
+                
+                s = readBin(f, integer(), size = 4)
+                self$data_type = get_type(s)
+                self$dimension = readBin(f, integer(), size = 4)
+                self$number_values = readBin(f, integer(), size = 8)
+                
+                if (self$data_type$name == "tdsTypeString") {
+                    self$data_size = readBin(f, integer(), size = 8)
+                } else {
+                    self$data_size = self$number_values * self$data_type$len * self$dimension
+                }
+            }
+            
+            num_properties = readBin(f, integer(), size = 4)
+            if (num_properties > 0) {
+                for (i in 1:num_properties) {
+                    prop_name = read_string(f)
+                    self$prop_type = readBin(f, integer(), size = 4)
+                    
+                    if (self$prop_type == 32) {
+                        s = read_string(f)
+                        flog.debug("%s = %s", prop_name, s)
+                        self$tdms_object$properties[[prop_name]] = s
+                    } else {
+                        s = read_type(f, self$prop_type)
+                        flog.debug("%s = %f %d [ns]", prop_name, s, self$prop_type)
+                        self$tdms_object$properties[[prop_name]] = s
+                    }
+                }
+            }
+        },
+        read_values = function(f) {
+            readBin(f, numeric(), self$number_values, size = 8)
+        }
+    )
+)
+
+
+
+### Program
+
+options = commandArgs(trailingOnly = TRUE)
+if (length(options) < 1) {
+    stop("Usage: tdmsreader <file>")
 }
 
-TdmsSegmentObject.read_values <- function(self, f) {
-    readBin(f, numeric(), self$number_values, size = 8)
-}
+# open file
+f = file(options[1], "rb")
 
 
-    
-
-main <- TdmsFile.init(f)
+main <- TdmsFile$new(f)
 
 close(f)
