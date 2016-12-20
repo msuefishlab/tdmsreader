@@ -135,6 +135,7 @@ TdmsSegment <- R6Class("TdmsSegment",
 
 
             lead_size = 7 * 4
+            fl("raw_dat %d next_seg %d", self$raw_data_offset, self$next_segment_offset)
             self$data_position = self$position + lead_size + self$raw_data_offset
             self$next_segment_pos = self$position + self$next_segment_offset + lead_size
         },
@@ -147,8 +148,7 @@ TdmsSegment <- R6Class("TdmsSegment",
 
             
             total_data_size = self$next_segment_offset - self$raw_data_offset
-            fl(total_data_size)
-            fl(data_size)
+            fl('total size %d data_size %d', total_data_size, data_size)
             
             if (data_size < 0 || total_data_size < 0) {
                 stop("Negative data size")
@@ -184,7 +184,7 @@ TdmsSegment <- R6Class("TdmsSegment",
 
         read_metadata = function(f, objects, previous_segment=NULL) {
             if(!self$kTocMetaData) {
-                if(!is.na(previous_segment)) {
+                if(!is.null(previous_segment)) {
                     self$ordered_objects = previous_segment$ordered_objects
                 }
                 else {
@@ -241,7 +241,7 @@ TdmsSegment <- R6Class("TdmsSegment",
                         fl("updating ordered_obj")
                         self$ordered_objects[[length(self$ordered_objects)+1]] = segment_obj
                     }
-                    segment_obj$read_metadata(segment_obj)
+                    segment_obj$read_metadata(f)
                     obj$previous_segment_object = segment_obj
                 }
             }
@@ -309,7 +309,7 @@ TdmsSegmentObject <- R6Class("TdmsSegmentObject",
         initialize = function(object) {
             tdms_object = object
         },
-        read_metadata = function(self) {
+        read_metadata = function(f) {
             raw_data_index <- readBin(f, integer(), size = 4)
             if (raw_data_index == -1) {
                 self$has_data = FALSE
@@ -330,7 +330,9 @@ TdmsSegmentObject <- R6Class("TdmsSegmentObject",
                 } else {
                     self$data_size = self$number_values * self$data_type$len * self$dimension
                 }
+
             }
+            fl("num_val %d data_size %d",self$number_values, self$data_size)
             
             num_properties = readBin(f, integer(), size = 4)
             if (num_properties > 0) {
@@ -366,9 +368,9 @@ if (length(options) < 1) {
 }
 
 # open file
-f = file(options[1], "rb")
+my_file = file(options[1], "rb")
 
 
-main <- TdmsFile$new(f)
+main <- TdmsFile$new(my_file)
 
-close(f)
+close(my_file)
