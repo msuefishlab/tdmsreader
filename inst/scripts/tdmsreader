@@ -76,8 +76,10 @@ TdmsFile <- R6Class("TdmsFile",
             previous_segment = NULL
             while(TRUE) {
                 fl("PASS %d %d", i, seek(file))
-
                 segment = TdmsSegment$new(file)
+                if(segment$eof == 1) {
+                    break
+                }
                 segment$read_metadata(file, self$objects, previous_segment)
                 self$segments[[length(self$segments)+1]] = segment
                 previous_segment = segment
@@ -89,14 +91,19 @@ TdmsFile <- R6Class("TdmsFile",
                 }
                 i = i + 1
             }
+            for(segment in self$segments) {
+                print(segment)
+                segment$read_raw_data(file)
+            }
         }
     )
 )
 
 TdmsSegment <- R6Class("TdmsSegment",
     public = list(
-        position = NULL,
-        version = NULL,
+        position = 0,
+        version = '',
+        eof = 0,
         ordered_objects = list(),
         final_chunk_proportion = 1.0,
         kTocMetaData = 0,
@@ -114,6 +121,10 @@ TdmsSegment <- R6Class("TdmsSegment",
         initialize = function(f) {
             self$position = seek(f)
             self$version = readChar(f, 4)
+            if(length(self$version) == 0) {
+                self$eof = 1
+                return (0)
+            }
             if (self$version != "TDSm") {
                 stop("File format error")
             }
@@ -130,12 +141,15 @@ TdmsSegment <- R6Class("TdmsSegment",
 
 
             self$version = readBin(f, integer(), size = 4)
-            self$next_segment_offset = readBin(f, integer(), size = 8)
-            self$raw_data_offset = readBin(f, integer(), size = 8)
+            fl("version %d", self$version)
+            fl("ftell %d", seek(f))
+            self$next_segment_offset = readBin(f, 'int', size = 8, endian = 'little')
+            self$raw_data_offset = readBin(f, 'int', size = 8, endian = 'little')
 
 
             lead_size = 7 * 4
-            fl("raw_dat %d next_seg %d", self$raw_data_offset, self$next_segment_offset)
+            fl("raw_data_offset %d next_segment_offset %d", self$raw_data_offset, self$next_segment_offset)
+            fl("raw_data_offset %016x next_segment_offset %016x", self$raw_data_offset, self$next_segment_offset)
             self$data_position = self$position + lead_size + self$raw_data_offset
             self$next_segment_pos = self$position + self$next_segment_offset + lead_size
         },
@@ -180,6 +194,7 @@ TdmsSegment <- R6Class("TdmsSegment",
                     }
                 }
             }
+            fl("num_chunks %d", self$num_chunks)
         },
 
         read_metadata = function(f, objects, previous_segment=NULL) {
