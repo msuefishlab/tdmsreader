@@ -89,16 +89,14 @@ TdmsFile <- R6Class("TdmsFile",
                 }
                 i = i + 1
             }
-            for(segment in self$segments) {
-                segment$read_raw_data(file)
-            }
 
             for(elt in ls(self$objects)) {
-                r = self$objects[[elt]]
-                if(r$has_data) {
-                    t = r$time_track()
-                    print(t)
-                }
+                obj = self$objects[[elt]]
+                obj$initialize_data()
+            }
+
+            for(segment in self$segments) {
+                segment$read_raw_data(file)
             }
         }
     )
@@ -277,6 +275,7 @@ TdmsSegment <- R6Class("TdmsSegment",
 
             k=0
             object_data = list()
+            j = 0
             
             if(self$num_chunks > 0) {
                 for(i in 1:self$num_chunks) {
@@ -288,7 +287,9 @@ TdmsSegment <- R6Class("TdmsSegment",
                     }
                     for(obj in self$ordered_objects) {
                         if(obj$has_data) {
+                            fl('test %d', j)
                             obj$tdms_object$update_data(object_data[[obj$tdms_object$path]])
+                            j = j+1
                         }
                     }
                 }
@@ -309,20 +310,32 @@ TdmsObject <- R6Class("TdmsObject",
         dimension = 1,
         data_type = NULL,
         has_data = FALSE,
+        number_values = 0,
+        data_insert_position = 1,
         previous_segment_object = NULL,
         initialize = function(path) {
             self$path = path
         },
-        update_data = function(data) {
-            self$data = data
+        update_data = function(d) {
+            p = self$data_insert_position
+            s = p + length(d) - 1
+            self$data[p:s] = d
+            self$data_insert_position = self$data_insert_position + length(d)
         },
         time_track = function(absolute_time = FALSE, accuracy = 'ns') {
             increment = self$properties[['wf_increment']]
             offset = self$properties[['wf_start_offset']]
-            print(increment)
-            print(offset)
-            l = length(self$data)
-            return (1:l * increment) + offset
+            len = length(self$data)
+            return (1:len * increment) + offset
+        },
+        initialize_data = function() {
+            if(self$number_values == 0) {
+                fl('no vals')
+            }
+            else {
+                fl('calculated %d vals', self$number_values)
+                self$data = numeric(self$number_values)
+            }
         }
     )
 )
@@ -405,5 +418,17 @@ my_file = file(options[1], "rb")
 
 
 main <- TdmsFile$new(my_file)
+
+for(elt in ls(main$objects)) {
+    r = main$objects[[elt]]
+    if(r$has_data) {
+        t = r$time_track()
+        s = r$data
+        fl('datalen %d', length(s))
+        png('test.png',width=5000,height=600)
+        plot(t[1:100000],s[1:100000], type='l')
+        dev.off()
+    }
+}
 
 close(my_file)
