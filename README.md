@@ -4,6 +4,10 @@
 Read LabVIEW TDMS files using R
 
 
+## Install
+
+    install_github('tdmsreader','msuefishlab')
+
 ## Setup
 
 The script is installed as a command line that you can locate by running
