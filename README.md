@@ -6,13 +6,24 @@ Read LabVIEW TDMS files using R
 
 ## Install
 
-    install_github('tdmsreader','msuefishlab')
+    devtools::install_github('msuefishlab/tdmsreader')
 
-## Setup
+Check installation with
 
-The script is installed as a command line that you can locate by running
+    library(tdmsreader)
+
+## Usage
+
+A command line script named is also installed. It might not be installed to a normal bin directory, so you can locate it with
 
     Rscript -e "system.file('scripts', 'tdmsreader', package='tdmsreader')"
+
+The usage of the script is
+
+    tdmsreader <input.tdms> <output.png>
+
+The command line script is a simple example of usage of the `tdmsreader` library
+
 
 ## Screenshot
 
@@ -21,5 +32,5 @@ The script is installed as a command line that you can locate by running
 
 ## Credit
 
-This could not have been done without the python npTDMS package. This code is almost a direct port of it to the R language
+This code couldn't have been done without the python npTDMS and is an almost direct port of of it https://github.com/adamreeve/npTDMS
 
