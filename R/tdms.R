@@ -3,7 +3,6 @@
 library(futile.logger)
 library(R6)
 
-flog.threshold(DEBUG)
 fl = flog.debug
 
 tdsDataType <- list(

@@ -1,6 +1,9 @@
 #!/usr/bin/env Rscript
 
 library(tdmsreader)
+library(futile.logger)
+
+flog.threshold(DEBUG)
 
 ### Program
 
