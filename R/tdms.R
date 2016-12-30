@@ -62,6 +62,36 @@ read_type <- function(f, type) {
     return(s)
 }
 
+
+TdmsIndexFile <- R6Class("TdmsIndexFile", 
+    public = list(
+        objects = new.env(),
+        segments = list(),
+        initialize = function(file) {
+            self$read_segments(file)
+        },
+        read_segments = function(file) {
+            i = 0
+            previous_segment = NULL
+            while(TRUE) {
+                fl("PASS %d %d", i, seek(file))
+                segment = TdmsSegment$new(file, TRUE)
+                if(segment$eof == 1) {
+                    break
+                }
+                segment$read_metadata(file, self$objects, previous_segment)
+                self$segments[[length(self$segments)+1]] = segment
+                previous_segment = segment
+                if(is.null(segment$next_segment_pos)) {
+                    break
+                } else {
+                    seek(file, segment$next_segment_pos)
+                }
+                i = i + 1
+            }
+        }
+    )
+)
 TdmsFile <- R6Class("TdmsFile",
     public = list(
         objects = new.env(),
@@ -74,7 +104,7 @@ TdmsFile <- R6Class("TdmsFile",
             previous_segment = NULL
             while(TRUE) {
                 fl("PASS %d %d", i, seek(file))
-                segment = TdmsSegment$new(file)
+                segment = TdmsSegment$new(file, FALSE)
                 if(segment$eof == 1) {
                     break
                 }
@@ -120,15 +150,24 @@ TdmsSegment <- R6Class("TdmsSegment",
         next_segment_pos = 0,
         num_chunks = 0,
 
-        initialize = function(f) {
+        initialize = function(f, index) {
             self$position = seek(f)
             self$version = readChar(f, 4)
             if(length(self$version) == 0) {
                 self$eof = 1
                 return (0)
             }
-            if (self$version != "TDSm") {
-                stop("File format error")
+            print(index)
+            print(self$version)
+            if(index) {
+                if (self$version != "TDSh") {
+                    stop("File format error (file)")
+                }
+            }
+            else {
+                if (self$version != "TDSm") {
+                    stop("File format error (index)")
+                }
             }
 
 

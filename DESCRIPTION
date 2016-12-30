@@ -2,8 +2,11 @@ Package: tdmsreader
 Title: Read tdms files
 Version: 0.0.1
 Authors@R: person("Colin", "Diesh", email = "colin.diesh@gmail.com", role = c("aut", "cre"))
+Author: Colin Diesh <colin.diesh@gmail.com>
+Maintainer: Colin Diesh <colin.diesh@gmail.com>
 Description: Read tdms files
 Depends: R (>= 3.0.2)
 License: ISC
 Encoding: UTF-8
 LazyData: true
+Suggests: testthat
