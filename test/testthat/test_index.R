@@ -1,5 +1,0 @@
-library(tdmsreader)
-f = file('file.tdms_index', 'rb')
-main = TdmsIndexFile$new(f)
-print(main)
-close(f)

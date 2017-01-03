@@ -157,8 +157,6 @@ TdmsSegment <- R6Class("TdmsSegment",
                 self$eof = 1
                 return (0)
             }
-            print(index)
-            print(self$version)
             if(index) {
                 if (self$version != "TDSh") {
                     stop("File format error (file)")
