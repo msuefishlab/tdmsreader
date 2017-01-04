@@ -284,6 +284,7 @@ TdmsSegment <- R6Class("TdmsSegment",
                             else if((n * inc + read_so_far) > (end - start)) {
                                 n = (end - start - read_so_far) / inc
                             }
+                            if(n < 1) break
                             obj$tdms_object$update_data(obj$read_values(f, n))
                             read_so_far = read_so_far + n * inc
                         }

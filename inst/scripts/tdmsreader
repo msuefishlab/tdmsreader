@@ -26,7 +26,7 @@ for (elt in ls(main$objects)) {
     if (r$has_data) {
         t = r$time_track(start = start, end = end)
         s = r$data
-        png(options[2], width=5000, height=600)
+        png(options[2], width=1200, height=600)
         plot(t, s, type='l')
         dev.off()
     }
