@@ -92,6 +92,8 @@ TdmsIndexFile <- R6Class("TdmsIndexFile",
         }
     )
 )
+
+
 TdmsFile <- R6Class("TdmsFile",
     public = list(
         objects = new.env(),
