@@ -62,7 +62,7 @@ read_type <- function(f, type) {
     return(s)
 }
 
-
+#' @export
 TdmsIndexFile <- R6Class("TdmsIndexFile", 
     public = list(
         objects = new.env(),
@@ -93,7 +93,7 @@ TdmsIndexFile <- R6Class("TdmsIndexFile",
     )
 )
 
-
+#' @export
 TdmsFile <- R6Class("TdmsFile",
     public = list(
         objects = new.env(),
@@ -133,6 +133,7 @@ TdmsFile <- R6Class("TdmsFile",
     )
 )
 
+#' @export
 TdmsSegment <- R6Class("TdmsSegment",
     public = list(
         position = 0,
@@ -338,6 +339,7 @@ TdmsSegment <- R6Class("TdmsSegment",
     )
 )
 
+#' @export
 TdmsObject <- R6Class("TdmsObject",
     lock_object = FALSE,
     public = list(
@@ -378,8 +380,7 @@ TdmsObject <- R6Class("TdmsObject",
 )
 
 
-
-
+#' @export
 TdmsSegmentObject <- R6Class("TdmsSegmentObject",
     public = list(
         number_values = 0,
