@@ -14,10 +14,10 @@ if (length(options) < 1) {
 
 # open file
 my_file = file(options[1], 'rb')
-index_file = file(paste0(options[1], '_index'), 'rb')
 
-start = 0.04
-end = 0.08
+start = as.numeric(options[3])
+end = as.numeric(options[4])
+
 main = TdmsFile$new(my_file)
 main$read_data(my_file, start, end)
 
@@ -26,7 +26,6 @@ for (elt in ls(main$objects)) {
     if (r$has_data) {
         t = r$time_track(start = start, end = end)
         s = r$data
-        flog.debug('datalen %d', length(s))
         png(options[2], width=5000, height=600)
         plot(t, s, type='l')
         dev.off()
@@ -34,4 +33,3 @@ for (elt in ls(main$objects)) {
 }
 
 close(my_file)
-close(index_file)
