@@ -63,8 +63,9 @@ TdmsFile <- R6Class("TdmsFile",
     public = list(
         objects = new.env(parent = emptyenv()),
         segments = list(),
-        file = NULL,
         initialize = function(file) {
+            self$segments = list()
+            self$objects = new.env(parent = emptyenv())
             self$read_segments(file)
         },
         read_segments = function(file) {
@@ -122,6 +123,19 @@ TdmsSegment <- R6Class("TdmsSegment",
         num_chunks = 0,
 
         initialize = function(f) {
+            self$position = 0
+            self$version = ''
+            self$eof = 0
+            self$ordered_objects = list()
+            self$final_chunk_proportion = 1.0
+
+            self$next_segment_offset = 0
+            self$raw_data_offset = 0
+            self$data_position = 0
+            self$next_segment_pos = 0
+            self$num_chunks = 0
+
+
             self$position = seek(f)
             self$version = readChar(f, 4)
             if (length(self$version) == 0) {
@@ -317,6 +331,14 @@ TdmsObject <- R6Class("TdmsObject",
         previous_segment_object = NULL,
         initialize = function(path) {
             self$path = path
+            self$data = NULL
+            self$properties = new.env(parent = emptyenv())
+            self$dimension = 1
+            self$data_type = NULL
+            self$has_data = FALSE
+            self$number_values = 0
+            self$data_insert_position = 1
+            self$previous_segment_object = NULL
         },
         update_data = function(d) {
             p = self$data_insert_position
@@ -368,6 +390,12 @@ TdmsSegmentObject <- R6Class("TdmsSegmentObject",
         tdms_object = NULL,
         prop_type = NULL,
         initialize = function(object) {
+            self$has_data = TRUE
+            self$data_size = 0
+            self$number_values = 0
+            self$data_type = NULL
+            self$prop_type = NULL
+            self$dimension = 1
             self$tdms_object = object
         },
         read_metadata = function(f) {
