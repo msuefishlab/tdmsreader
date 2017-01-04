@@ -93,10 +93,9 @@ TdmsFile <- R6Class("TdmsFile",
                 obj = self$objects[[elt]]
                 obj$initialize_data(start, end)
             }
-            read_so_far = 0
 
             for (segment in self$segments) {
-                read_so_far = read_so_far + segment$read_raw_data(file, start, end, read_so_far)
+                segment$read_raw_data(file, start, end)
             }
         }
     )
@@ -277,7 +276,7 @@ TdmsSegment <- R6Class("TdmsSegment",
             self$calculate_chunks()
         },
 
-        read_raw_data = function(f, start = NULL, end = NULL, read_so_far = NULL) {
+        read_raw_data = function(f, start = NULL, end = NULL) {
             if (!self$kTocRawData) {
                 fl("No raw data in segment")
                 return
@@ -292,26 +291,25 @@ TdmsSegment <- R6Class("TdmsSegment",
                         if (obj$has_data) {
                             n = obj$number_values
                             inc = obj$tdms_object$properties[['wf_increment']]
-                            if(read_so_far >= end - start) {
+
+                            if(obj$tdms_object$read_so_far >= end - start) {
                                 break
                             }
-                            else if((n * inc + read_so_far) > (end - start)) {
-                                n = (end - start - read_so_far) / inc
+                            else if(n * inc + obj$tdms_object$read_so_far > end - start) {
+                                n = (end - start - obj$tdms_object$read_so_far) / inc
                             }
-                            if(n < 1) break
+                            if(n < 1) {
+                                break
+                            }
                             obj$tdms_object$update_data(obj$read_values(f, n))
-                            read_so_far = read_so_far + n * inc
+                            obj$tdms_object$read_so_far = obj$tdms_object$read_so_far + n * inc
                         }
-                    }
-                    if(read_so_far >= end - start) {
-                        break
                     }
                 }
             }
             else {
                 flog.error('No chunks')
             }
-            return (read_so_far)
         }
     )
 )
@@ -326,12 +324,14 @@ TdmsObject <- R6Class("TdmsObject",
         dimension = 1,
         data_type = NULL,
         has_data = FALSE,
+        read_so_far = 0,
         number_values = 0,
         data_insert_position = 1,
         previous_segment_object = NULL,
         initialize = function(path) {
             self$path = path
             self$data = NULL
+            self$read_so_far = 0
             self$properties = new.env(parent = emptyenv())
             self$dimension = 1
             self$data_type = NULL
@@ -347,14 +347,14 @@ TdmsObject <- R6Class("TdmsObject",
             self$data_insert_position = self$data_insert_position + length(d)
         },
         time_track = function(absolute_time = FALSE, accuracy = 'ns', start = NULL, end = NULL) {
-            increment = self$properties[['wf_increment']]
+            inc = self$properties[['wf_increment']]
             offset = self$properties[['wf_start_offset']]
             len = length(self$data)
             if (!is.null(start) && !is.null(end)) {
-                num_vals = (end - start) / self$properties[['wf_increment']]
-                return ((1:num_vals * increment) + offset + start)
+                num_vals = (end - start) / inc
+                return (1:num_vals * inc + offset + start)
             } else {
-                return (1:len * increment) + offset
+                return (1:len * inc) + offset
             }
         },
         initialize_data = function(start = NULL, end = NULL) {
