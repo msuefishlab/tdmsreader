@@ -24,12 +24,11 @@ main$read_data(my_file, start, end)
 for (elt in ls(main$objects)) {
     r = main$objects[[elt]]
     if (r$has_data) {
-        print(elt)
-        t = r$time_track(start, end)
+        t = r$time_track(start = start, end = end)
         s = r$data
         flog.debug('datalen %d', length(s))
         png(options[2], width=5000, height=600)
-        plot(t,s, type='l')
+        plot(t, s, type='l')
         dev.off()
     }
 }

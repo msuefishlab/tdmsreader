@@ -262,13 +262,14 @@ TdmsSegment <- R6Class("TdmsSegment",
             self$calculate_chunks()
         },
 
-        read_raw_data = function(f, start = NULL, end= NULL) {
+        read_raw_data = function(f, start = NULL, end = NULL) {
             if (!self$kTocRawData) {
                 fl("No raw data in segment")
                 return
             }
             seek(f, self$data_position)
 
+            read_so_far = 0
             total_data_size = self$next_segment_offset - self$raw_data_offset
             num_elts = total_data_size / 8
 
@@ -277,8 +278,16 @@ TdmsSegment <- R6Class("TdmsSegment",
                     for (obj in self$ordered_objects) {
                         if (obj$has_data) {
                             n = obj$number_values
+                            read_so_far = read_so_far + n * obj$tdms_object$properties[['wf_increment']]
+                            if(read_so_far > end - start) {
+                                break
+                            }
+                            print("READING VALS")
                             obj$tdms_object$update_data(obj$read_values(f, n, start, end))
                         }
+                    }
+                    if(read_so_far > end - start) {
+                        break
                     }
                 }
             }
@@ -316,20 +325,22 @@ TdmsObject <- R6Class("TdmsObject",
             offset = self$properties[['wf_start_offset']]
             len = length(self$data)
             if (!is.null(start) && !is.null(end)) {
+                print("PUPPPIES")
+                print(start)
                 num_vals = (end - start) / self$properties[['wf_increment']]
-                return (1:num_vals * increment) + offset + start
+                return ((1:num_vals * increment) + offset + start)
             } else {
                 return (1:len * increment) + offset
             }
         },
         initialize_data = function(start = NULL, end = NULL) {
             if (self$number_values == 0) {
-                fl('no vals')
+                # non-data or metadata segment
             }
-            if (!is.null(start) && !is.null(end)) {
+            else if (!is.null(start) && !is.null(end)) {
                 num_vals = (end - start) / self$properties[['wf_increment']]
                 if(num_vals > self$number_values) {
-                    fl("numvals %f e %f s %f", num_vals, end, start)
+                    fl("nv %f numvals %f e %f s %f", self$number_values, num_vals, end, start)
                     flog.error("Start/end bigger than specified data")
                     num_vals = self$number_values
                 }
@@ -402,9 +413,9 @@ TdmsSegmentObject <- R6Class("TdmsSegmentObject",
         },
         read_values = function(f, n, s = NULL, e = NULL) {
             if (!is.null(s) && !is.null(e)) {
-                seek(f, start/8, origin = "current")
-                print((e-s)/8)
-                return (readBin(f, numeric(), n - ((e-s)/8), size = 8))
+                increment = self$tdms_object$properties[['wf_increment']]
+                seek(f, s/increment, origin = "current")
+                return (readBin(f, numeric(), n - ((e-s)/increment), size = 8))
             }
             else {
                 return (readBin(f, numeric(), n, size = 8))
