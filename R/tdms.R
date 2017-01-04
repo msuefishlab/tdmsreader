@@ -61,7 +61,7 @@ read_type <- function(f, type) {
 #' @export
 TdmsFile <- R6Class("TdmsFile",
     public = list(
-        objects = new.env(),
+        objects = new.env(parent = emptyenv()),
         segments = list(),
         file = NULL,
         initialize = function(file) {
@@ -308,7 +308,7 @@ TdmsObject <- R6Class("TdmsObject",
     public = list(
         path = NULL,
         data = NULL,
-        properties = new.env(),
+        properties = new.env(parent = emptyenv()),
         dimension = 1,
         data_type = NULL,
         has_data = FALSE,
