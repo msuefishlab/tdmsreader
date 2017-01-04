@@ -17,14 +17,14 @@ my_file = file(options[1], "rb")
 
 
 main <- TdmsFile$new(my_file)
-main$read_data()
+main$read_data(my_file)
 
 for(elt in ls(main$objects)) {
     r = main$objects[[elt]]
     if(r$has_data) {
         t = r$time_track()
         s = r$data
-        fl('datalen %d', length(s))
+        flog.debug('datalen %d', length(s))
         png(options[2],width=5000,height=600)
         plot(t[1:100000],s[1:100000], type='l')
         dev.off()
