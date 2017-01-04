@@ -2,7 +2,6 @@
 .Rhistory
 .RData
 *~
-*.tdms
 .DS_Store
 *.swp
 *.Rcheck

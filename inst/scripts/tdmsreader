@@ -17,6 +17,7 @@ my_file = file(options[1], "rb")
 
 
 main <- TdmsFile$new(my_file)
+main$read_data()
 
 for(elt in ls(main$objects)) {
     r = main$objects[[elt]]

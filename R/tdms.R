@@ -90,7 +90,8 @@ TdmsFile <- R6Class("TdmsFile",
                 }
                 i = i + 1
             }
-
+        },
+        read_data = function() {
             for(elt in ls(self$objects)) {
                 obj = self$objects[[elt]]
                 obj$initialize_data()
