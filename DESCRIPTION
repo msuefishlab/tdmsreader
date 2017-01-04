@@ -12,7 +12,7 @@ Encoding: UTF-8
 LazyData: true
 Suggests:
     testthat
-RoxygenNote: 5.0.1
+RoxygenNote: 5.0.1.9000
 Imports:
     R6,
     futile.logger

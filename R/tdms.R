@@ -62,43 +62,13 @@ read_type <- function(f, type) {
     return(s)
 }
 
-#' @export
-TdmsIndexFile <- R6Class("TdmsIndexFile", 
-    public = list(
-        objects = new.env(),
-        segments = list(),
-        initialize = function(file) {
-            self$read_segments(file)
-        },
-        read_segments = function(file) {
-            i = 0
-            previous_segment = NULL
-            while(TRUE) {
-                fl("PASS %d %d", i, seek(file))
-                segment = TdmsSegment$new(file, TRUE)
-                if(segment$eof == 1) {
-                    break
-                }
-                segment$read_metadata(file, self$objects, previous_segment)
-                self$segments[[length(self$segments)+1]] = segment
-                previous_segment = segment
-                if(is.null(segment$next_segment_pos)) {
-                    break
-                } else {
-                    seek(file, segment$next_segment_pos)
-                }
-                i = i + 1
-            }
-        }
-    )
-)
 
 #' @export
 TdmsFile <- R6Class("TdmsFile",
     public = list(
         objects = new.env(),
         segments = list(),
-        initialize = function(file) {
+        initialize = function(file, index) {
             self$read_segments(file)
         },
         read_segments = function(file) {
