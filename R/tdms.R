@@ -69,8 +69,8 @@ TdmsFile <- R6Class("TdmsFile",
         objects = new.env(),
         segments = list(),
         file = NULL,
-        initialize = function(file, index) {
-            if (index) {
+        initialize = function(file, index = NULL) {
+            if (!is.null(index)) {
                 self$read_segments(index)
             }
             else {
@@ -138,7 +138,7 @@ TdmsSegment <- R6Class("TdmsSegment",
                 self$eof = 1
                 return (0)
             }
-            if (index) {
+            if (!is.null(index)) {
                 if (self$version != "TDSh") {
                     stop("File format error (file)")
                 }
