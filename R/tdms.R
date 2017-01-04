@@ -20,8 +20,6 @@ tdsDataType <- list(
     list(length = 16, id = 68, name = "tdsTypeTimeStamp")
 )
 
-
-
 get_type <- function(id) {
     for (elt in tdsDataType) {
         if (elt$id == id) {
@@ -30,9 +28,6 @@ get_type <- function(id) {
     }
     return(NULL)
 }
-
-
-
 
 read_string <- function(f) {
     s = readBin(f, integer(), size = 4)
@@ -69,21 +64,15 @@ TdmsFile <- R6Class("TdmsFile",
         objects = new.env(),
         segments = list(),
         file = NULL,
-        initialize = function(file, index = NULL) {
-            if (!is.null(index)) {
-                self$read_segments(index)
-            }
-            else {
-                self$read_segments(file)
-            }
-            self$file = file
+        initialize = function(file) {
+            self$read_segments(file)
         },
         read_segments = function(file) {
             i = 0
             previous_segment = NULL
             while (TRUE) {
                 fl("PASS %d %d", i, seek(file))
-                segment = TdmsSegment$new(file, FALSE)
+                segment = TdmsSegment$new(file)
                 if (segment$eof == 1) {
                     break
                 }
@@ -98,14 +87,14 @@ TdmsFile <- R6Class("TdmsFile",
                 i = i + 1
             }
         },
-        read_data = function() {
+        read_data = function(file) {
             for (elt in ls(self$objects)) {
                 obj = self$objects[[elt]]
                 obj$initialize_data()
             }
 
             for (segment in self$segments) {
-                segment$read_raw_data(self$file)
+                segment$read_raw_data(file)
             }
         }
     )
@@ -131,24 +120,17 @@ TdmsSegment <- R6Class("TdmsSegment",
         next_segment_pos = 0,
         num_chunks = 0,
 
-        initialize = function(f, index) {
+        initialize = function(f) {
             self$position = seek(f)
             self$version = readChar(f, 4)
             if (length(self$version) == 0) {
                 self$eof = 1
                 return (0)
             }
-            if (!is.null(index)) {
-                if (self$version != "TDSh") {
-                    stop("File format error (file)")
-                }
-            }
-            else {
-                if (self$version != "TDSm") {
-                    stop("File format error (index)")
-                }
-            }
 
+            if (self$version != "TDSh" && self$version != "TDSm") {
+                stop("File format error (file)")
+            }
 
             kTocType = readBin(f, integer(), size = 4)
             fl('kToc %d %d', kTocType, seek(f))

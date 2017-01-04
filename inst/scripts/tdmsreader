@@ -9,26 +9,29 @@ flog.threshold(DEBUG)
 
 options = commandArgs(trailingOnly = TRUE)
 if (length(options) < 1) {
-    stop("Usage: tdmsreader <file> <output>")
+    stop('Usage: tdmsreader <file> <output>')
 }
 
 # open file
-my_file = file(options[1], "rb")
+my_file = file(options[1], 'rb')
+index_file = file(paste0(options[1], '_index'), 'rb')
 
 
-main <- TdmsFile$new(my_file)
+main = TdmsFile$new(my_file)
 main$read_data(my_file)
 
-for(elt in ls(main$objects)) {
+for (elt in ls(main$objects)) {
     r = main$objects[[elt]]
-    if(r$has_data) {
+    if (r$has_data) {
+        print(elt)
         t = r$time_track()
         s = r$data
         flog.debug('datalen %d', length(s))
-        png(options[2],width=5000,height=600)
-        plot(t[1:100000],s[1:100000], type='l')
+        png(options[2], width=5000, height=600)
+        plot(t,s, type='l')
         dev.off()
     }
 }
 
 close(my_file)
+close(index_file)

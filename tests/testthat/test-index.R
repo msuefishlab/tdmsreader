@@ -6,4 +6,6 @@ test_that("index file is present", {
     main = TdmsFile$new(f, i)
     expect_equal(length(main$segments), 1)
     close(f)
+    close(i)
 })
+
