@@ -87,14 +87,14 @@ TdmsFile <- R6Class("TdmsFile",
                 i = i + 1
             }
         },
-        read_data = function(file) {
+        read_data = function(file, start = NULL, end = NULL) {
             for (elt in ls(self$objects)) {
                 obj = self$objects[[elt]]
-                obj$initialize_data()
+                obj$initialize_data(start, end)
             }
 
             for (segment in self$segments) {
-                segment$read_raw_data(file)
+                segment$read_raw_data(file, start, end)
             }
         }
     )
@@ -183,7 +183,7 @@ TdmsSegment <- R6Class("TdmsSegment",
                     }
                 }
             } else {
-                flog.warning("Data size %d is not a multiple of the chunk size %d", total_data_size, data_size)
+                flog.error("Data size %d is not a multiple of the chunk size %d", total_data_size, data_size)
                 self$num_chunks = 1 + total_data_size %/% data_size
                 self$final_chunk_proportion = chunk_remainder / data_size
 
@@ -262,7 +262,7 @@ TdmsSegment <- R6Class("TdmsSegment",
             self$calculate_chunks()
         },
 
-        read_raw_data = function(f) {
+        read_raw_data = function(f, start = NULL, end= NULL) {
             if (!self$kTocRawData) {
                 fl("No raw data in segment")
                 return
@@ -272,22 +272,12 @@ TdmsSegment <- R6Class("TdmsSegment",
             total_data_size = self$next_segment_offset - self$raw_data_offset
             num_elts = total_data_size / 8
 
-            k = 0
-            object_data = list()
-            j = 0
-
             if (self$num_chunks > 0) {
                 for (i in 1:self$num_chunks) {
                     for (obj in self$ordered_objects) {
                         if (obj$has_data) {
                             n = obj$number_values
-                            object_data[[obj$tdms_object$path]] = obj$read_values(f, n)
-                        }
-                    }
-                    for (obj in self$ordered_objects) {
-                        if (obj$has_data) {
-                            obj$tdms_object$update_data(object_data[[obj$tdms_object$path]])
-                            j = j + 1
+                            obj$tdms_object$update_data(obj$read_values(f, n, start, end))
                         }
                     }
                 }
@@ -321,15 +311,29 @@ TdmsObject <- R6Class("TdmsObject",
             self$data[p:s] = d
             self$data_insert_position = self$data_insert_position + length(d)
         },
-        time_track = function(absolute_time = FALSE, accuracy = 'ns') {
+        time_track = function(absolute_time = FALSE, accuracy = 'ns', start = NULL, end = NULL) {
             increment = self$properties[['wf_increment']]
             offset = self$properties[['wf_start_offset']]
             len = length(self$data)
-            return (1:len * increment) + offset
+            if (!is.null(start) && !is.null(end)) {
+                num_vals = (end - start) / self$properties[['wf_increment']]
+                return (1:num_vals * increment) + offset + start
+            } else {
+                return (1:len * increment) + offset
+            }
         },
-        initialize_data = function() {
+        initialize_data = function(start = NULL, end = NULL) {
             if (self$number_values == 0) {
                 fl('no vals')
+            }
+            if (!is.null(start) && !is.null(end)) {
+                num_vals = (end - start) / self$properties[['wf_increment']]
+                if(num_vals > self$number_values) {
+                    fl("numvals %f e %f s %f", num_vals, end, start)
+                    flog.error("Start/end bigger than specified data")
+                    num_vals = self$number_values
+                }
+                self$data = numeric(num_vals)
             }
             else {
                 fl('calculated %d vals', self$number_values)
@@ -396,8 +400,15 @@ TdmsSegmentObject <- R6Class("TdmsSegmentObject",
                 }
             }
         },
-        read_values = function(f, n) {
-            readBin(f, numeric(), n, size = 8)
+        read_values = function(f, n, s = NULL, e = NULL) {
+            if (!is.null(s) && !is.null(e)) {
+                seek(f, start/8, origin = "current")
+                print((e-s)/8)
+                return (readBin(f, numeric(), n - ((e-s)/8), size = 8))
+            }
+            else {
+                return (readBin(f, numeric(), n, size = 8))
+            }
         }
     )
 )
