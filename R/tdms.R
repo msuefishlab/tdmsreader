@@ -290,6 +290,7 @@ TdmsSegment <- R6Class("TdmsSegment",
                 flog.error('No chunks')
                 return
             }
+            flag = 0
 
             for (i in 1:self$num_chunks) {
                 for (obj in self$ordered_objects) {
@@ -298,22 +299,33 @@ TdmsSegment <- R6Class("TdmsSegment",
                         inc = obj$tdms_object$properties[['wf_increment']]
                         ret = obj$tdms_object$read_so_far
                         if(ret + n * inc > start && ret < end) {
+                            e = n
+                            s = 1
                             if(ret + n * inc > end) {
-                                n = (end - start - ret) / inc
+                                e = as.integer((end - start - ret) / inc)
+                                if(e < 1) {
+                                    flog.error("no vals break")
+                                    flag = 1
+                                    break
+                                }
+                                fl("set end %f", e)
                             }
-                            
-                            if(n < 1) {
-                                break
-                            }
-                            vals = obj$read_values(f, n)
                             if(ret < start) {
-                                s = (start - ret) / inc
-                                vals = vals[s:length(vals)]
+                                s = as.integer((start - ret) / inc)
+                                fl("set start %f", s)
                             }
+
+                            vals = obj$read_values(f, n)[s:e]
                             obj$tdms_object$update_data(vals)
+                            obj$tdms_object$read_so_far = obj$tdms_object$read_so_far + length(vals) * inc
                         }
-                        obj$tdms_object$read_so_far = obj$tdms_object$read_so_far + n * inc
+                        else {
+                            obj$tdms_object$read_so_far = obj$tdms_object$read_so_far + n * inc
+                        }
                     }
+                }
+                if(flag) {
+                    break
                 }
             }
         }
@@ -358,9 +370,11 @@ TdmsObject <- R6Class("TdmsObject",
             len = length(self$data)
             if (!is.null(start) && !is.null(end)) {
                 num_vals = (end - start) / inc
-                return (1:num_vals * inc + offset + start)
+                ret = 1:num_vals * inc + offset + start
+                return (ret[1:length(self$data)])
             } else {
-                return (1:len * inc) + offset
+                ret = 1:len * inc + offset
+                return (ret[1:length(self$data)])
             }
         },
         initialize_data = function(start = NULL, end = NULL) {
