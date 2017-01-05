@@ -291,51 +291,28 @@ TdmsSegment <- R6Class("TdmsSegment",
                 return
             }
 
-            # check for only one object to read continuous data segment
-            n = 0
-            elt = NULL
-            for (obj in self$ordered_objects) {
-                if(obj$has_data) {
-                    n = n + 1
-                    elt = obj
-                }
-            }
-
-            if (n == 1) {
-                fl("time read %f %f %d", elt$tdms_object$read_so_far, end - start, elt$tdms_object$read_so_far < end-start)
-                if (round(elt$tdms_object$read_so_far, 1) < end - start) {
-                    fl("WHTF")
-                    inc = elt$tdms_object$properties[['wf_increment']]
-                    max = elt$number_values * self$num_chunks
-                    ret = elt$read_values(f, max)
-                    s = as.integer(start/inc) + 1
-                    e = as.integer((end-start) / inc)
-                    ret = ret[s:e]
-                    fl("len %d", length(ret))
-                    elt$tdms_object$update_data(ret)
-                    elt$tdms_object$read_so_far = elt$tdms_object$read_so_far +  length(ret) * inc
-                }
-            }
-            else {
-                for (i in 1:self$num_chunks) {
-                    for (obj in self$ordered_objects) {
-                        if (obj$has_data) {
-                            n = obj$number_values
-                            inc = obj$tdms_object$properties[['wf_increment']]
-
-                            if(obj$tdms_object$read_so_far >= end - start) {
-                                break
+            for (i in 1:self$num_chunks) {
+                for (obj in self$ordered_objects) {
+                    if (obj$has_data) {
+                        n = obj$number_values
+                        inc = obj$tdms_object$properties[['wf_increment']]
+                        ret = obj$tdms_object$read_so_far
+                        if(ret + n * inc > start && ret < end) {
+                            if(ret + n * inc > end) {
+                                n = (end - start - ret) / inc
                             }
-                            else if(n * inc + obj$tdms_object$read_so_far > end - start) {
-                                n = (end - start - obj$tdms_object$read_so_far) / inc
-                            }
+                            
                             if(n < 1) {
                                 break
                             }
-                            ret = obj$read_values(f, n)
-                            obj$tdms_object$update_data(ret)
-                            obj$tdms_object$read_so_far = obj$tdms_object$read_so_far + n * inc
+                            vals = obj$read_values(f, n)
+                            if(ret < start) {
+                                s = (start - ret) / inc
+                                vals = vals[s:length(vals)]
+                            }
+                            obj$tdms_object$update_data(vals)
                         }
+                        obj$tdms_object$read_so_far = obj$tdms_object$read_so_far + n * inc
                     }
                 }
             }
