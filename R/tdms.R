@@ -285,7 +285,38 @@ TdmsSegment <- R6Class("TdmsSegment",
             total_data_size = self$next_segment_offset - self$raw_data_offset
             num_elts = total_data_size / 8
 
-            if (self$num_chunks > 0) {
+
+            if (self$num_chunks == 0) {
+                flog.error('No chunks')
+                return
+            }
+
+            # check for only one object to read continuous data segment
+            n = 0
+            elt = NULL
+            for (obj in self$ordered_objects) {
+                if(obj$has_data) {
+                    n = n + 1
+                    elt = obj
+                }
+            }
+
+            if (n == 1) {
+                fl("time read %f %f %d", elt$tdms_object$read_so_far, end - start, elt$tdms_object$read_so_far < end-start)
+                if (round(elt$tdms_object$read_so_far, 1) < end - start) {
+                    fl("WHTF")
+                    inc = elt$tdms_object$properties[['wf_increment']]
+                    max = elt$number_values * self$num_chunks
+                    ret = elt$read_values(f, max)
+                    s = as.integer(start/inc) + 1
+                    e = as.integer((end-start) / inc)
+                    ret = ret[s:e]
+                    fl("len %d", length(ret))
+                    elt$tdms_object$update_data(ret)
+                    elt$tdms_object$read_so_far = elt$tdms_object$read_so_far +  length(ret) * inc
+                }
+            }
+            else {
                 for (i in 1:self$num_chunks) {
                     for (obj in self$ordered_objects) {
                         if (obj$has_data) {
@@ -301,14 +332,12 @@ TdmsSegment <- R6Class("TdmsSegment",
                             if(n < 1) {
                                 break
                             }
-                            obj$tdms_object$update_data(obj$read_values(f, n))
+                            ret = obj$read_values(f, n)
+                            obj$tdms_object$update_data(ret)
                             obj$tdms_object$read_so_far = obj$tdms_object$read_so_far + n * inc
                         }
                     }
                 }
-            }
-            else {
-                flog.error('No chunks')
             }
         }
     )
@@ -431,11 +460,11 @@ TdmsSegmentObject <- R6Class("TdmsSegmentObject",
 
                     if (self$prop_type == 32) {
                         s = read_string(f)
-                        fl("%s = %s", prop_name, s)
+                        #fl("%s = %s", prop_name, s)
                         self$tdms_object$properties[[prop_name]] = s
                     } else {
                         s = read_type(f, self$prop_type)
-                        fl("%s = %f %d [ns]", prop_name, s, self$prop_type)
+                        #fl("%s = %f %d [ns]", prop_name, s, self$prop_type)
                         self$tdms_object$properties[[prop_name]] = s
                     }
                 }
