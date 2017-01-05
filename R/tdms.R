@@ -93,10 +93,9 @@ TdmsFile <- R6Class("TdmsFile",
                 obj = self$objects[[elt]]
                 obj$initialize_data(start, end)
             }
-            read_so_far = 0
 
             for (segment in self$segments) {
-                read_so_far = read_so_far + segment$read_raw_data(file, start, end, read_so_far)
+                segment$read_raw_data(file, start, end)
             }
         }
     )
@@ -277,7 +276,7 @@ TdmsSegment <- R6Class("TdmsSegment",
             self$calculate_chunks()
         },
 
-        read_raw_data = function(f, start = NULL, end = NULL, read_so_far = NULL) {
+        read_raw_data = function(f, start = NULL, end = NULL) {
             if (!self$kTocRawData) {
                 fl("No raw data in segment")
                 return
@@ -286,24 +285,28 @@ TdmsSegment <- R6Class("TdmsSegment",
             total_data_size = self$next_segment_offset - self$raw_data_offset
             num_elts = total_data_size / 8
 
+            flag = FALSE
+
             if (self$num_chunks > 0) {
                 for (i in 1:self$num_chunks) {
                     for (obj in self$ordered_objects) {
                         if (obj$has_data) {
                             n = obj$number_values
                             inc = obj$tdms_object$properties[['wf_increment']]
-                            if(read_so_far >= end - start) {
+                            tr = obj$tdms_object$read_so_far
+
+                            if((n * inc + tr) > (end - start)) {
+                                n = (end - start - tr) / inc
+                            }
+                            if(n < 1) {
+                                flag = 1
                                 break
                             }
-                            else if((n * inc + read_so_far) > (end - start)) {
-                                n = (end - start - read_so_far) / inc
-                            }
-                            if(n < 1) break
                             obj$tdms_object$update_data(obj$read_values(f, n))
-                            read_so_far = read_so_far + n * inc
+                            obj$tdms_object$read_so_far = tr + n * inc
                         }
                     }
-                    if(read_so_far >= end - start) {
+                    if(flag) {
                         break
                     }
                 }
@@ -311,7 +314,6 @@ TdmsSegment <- R6Class("TdmsSegment",
             else {
                 flog.error('No chunks')
             }
-            return (read_so_far)
         }
     )
 )
