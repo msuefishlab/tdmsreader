@@ -1,5 +1,6 @@
 # tdmsreader
 
+[![Build Status](https://travis-ci.org/msuefishlab/tdmsreader.svg?branch=master)](https://travis-ci.org/msuefishlab/tdmsreader)
 
 Read LabVIEW TDMS files using R
 
