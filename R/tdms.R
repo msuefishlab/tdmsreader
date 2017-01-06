@@ -315,7 +315,6 @@ TdmsSegment <- R6Class("TdmsSegment",
                             e = n
 
                             if((tr + n*inc) < start) {
-                                flog.error("skipping s %f e %f", tr, tr + n*inc)
                                 obj$read_values(f, n)
                                 obj$tdms_object$read_so_far = tr + n*inc
                                 break
@@ -327,17 +326,12 @@ TdmsSegment <- R6Class("TdmsSegment",
 
                             if((tr + n*inc) > start && tr < start) {
                                 s = n - as.integer((tr + n*inc - start) / inc)
-                                flog.error("setting s %f tr %f int %f end %f mod %f", s, tr, n*inc, start, tr + n*inc - start)
                             }
                             if((tr + n*inc) > end && tr < end && (tr + n*inc - end) > tol) {
                                 e = n - as.integer((tr + n*inc - end) / inc)
-                                flog.error("setting e %f tr %f int %f end %f mod %f", e, tr, n*inc, end, tr + n*inc - end)
                             }
-                            flog.error("reading time %f e %f", tr, tr + n*inc)
                             vals = obj$read_values(f, n)
-                            flog.error("reading vals pos %d:%d", s, e)
                             vals = vals[s:e]
-                            flog.error("len vals %d", length(vals))
 
                             obj$tdms_object$update_data(vals)
                             obj$tdms_object$read_so_far = tr + length(vals)*inc

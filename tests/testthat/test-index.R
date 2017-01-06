@@ -40,7 +40,10 @@ test_that("get data from tdms partial", {
     r = main$objects[[ "/'Untitled'/'Dev1/ai0'"]]
     t = r$time_track(start = 0.5, end = 1)
     s = r$data
-    print(head(s))
+    print(head(t))
+    expect_equal(t[1:5], c(0.50001, 0.50002, 0.50003, 0.50004, 0.50005))
+    expect_equal(s[1:5], c(0.002214717, 0.006490602, -0.003047911, 0.003859288, 0.004846030))
+
 
     close(f)
 })
