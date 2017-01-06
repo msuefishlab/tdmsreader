@@ -96,10 +96,12 @@ TdmsFile <- R6Class("TdmsFile",
             }
         },
         read_data = function(file, start = NULL, end = NULL) {
+            print("!!!!!!!!!????")
             for (elt in ls(self$objects)) {
                 obj = self$objects[[elt]]
                 obj$initialize_data(start, end)
             }
+            print("!!!!!!!!!")
 
             for (segment in self$segments) {
                 segment$read_raw_data(file, start, end)
@@ -305,11 +307,13 @@ TdmsSegment <- R6Class("TdmsSegment",
                 for (i in 1:self$num_chunks) {
                     for (obj in self$ordered_objects) {
                         if (obj$has_data) {
+                            print("!!!678")
                             n = obj$number_values
                             inc = obj$tdms_object$properties[['wf_increment']]
                             tr = obj$tdms_object$read_so_far
                             s = 1
                             e = n
+                            print("!!!123")
 
                             if(tr + n*inc < start) {
                                 break
@@ -324,6 +328,7 @@ TdmsSegment <- R6Class("TdmsSegment",
                             else if(tr + n*inc > end && tr < end) {
                                 e = (tr - end) / inc
                             }
+                            print("!!!456")
                             vals = obj$read_values(f, n)
                             vals = vals[s:e]
 
@@ -394,7 +399,7 @@ TdmsObject <- R6Class("TdmsObject",
             if (self$number_values == 0) {
                 # non-data or metadata segment
             }
-            self$read_so_far = start
+            #self$read_so_far = start
             num_vals = (end - start) / self$properties[['wf_increment']]
             if(num_vals > self$number_values) {
                 flog.error("Start/end bigger than specified data")

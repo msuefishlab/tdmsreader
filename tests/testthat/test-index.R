@@ -31,17 +31,17 @@ test_that("get data from tdms", {
     close(f)
 })
 
-test_that("get data from tdms", {
-    f = file('file.tdms', 'rb')
-    main = TdmsFile$new(f)
-
-    main$read_data(f, 0.5, 1)
-    r = main$objects[[ "/'Untitled'/'Dev1/ai0'"]]
-    t = r$time_track(start = 0.5, end = 1)
-    s = r$data
-    print(t[1:5])
-    print(s)
-
-    close(f)
-})
-
+#test_that("get data from tdms partial", {
+#    f = file('file.tdms', 'rb')
+#    main = TdmsFile$new(f)
+#
+#    main$read_data(f, 0.5, 1)
+#    r = main$objects[[ "/'Untitled'/'Dev1/ai0'"]]
+#    t = r$time_track(start = 0.5, end = 1)
+#    s = r$data
+#    print(t[1:5])
+#    print(s)
+#
+#    close(f)
+#})
+#
