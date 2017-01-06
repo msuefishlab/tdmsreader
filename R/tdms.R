@@ -302,8 +302,7 @@ TdmsSegment <- R6Class("TdmsSegment",
             num_elts = total_data_size / 8
 
             flag = FALSE
-            tol = 1e-3
-            flog.error("pros start %f %f", start, end)
+            tol = 1e-5
 
             if (self$num_chunks > 0) {
                 for (i in 1:self$num_chunks) {
@@ -314,9 +313,10 @@ TdmsSegment <- R6Class("TdmsSegment",
                             tr = obj$tdms_object$read_so_far
                             s = 1
                             e = n
-                            flog.error("tr %f %f", tr + n*inc, start)
+                            #flog.error("tr %f %f %f", tr, tr + n*inc, start)
 
                             if((tr + n*inc) < start) {
+                                flog.error("skipping s %f e %f", tr, tr + n*inc)
                                 obj$read_values(f, n)
                                 obj$tdms_object$read_so_far = tr + n*inc
                                 break
@@ -326,17 +326,19 @@ TdmsSegment <- R6Class("TdmsSegment",
                                 break
                             }
                             else if((tr + n*inc) > start && tr < start) {
-                                s = (tr + n*inc - start) / inc
-                                print('setting s')
-                                print(s)
+                                s = as.integer((tr + n*inc - start) / inc)
+                                flog.error("setting s %f %f", s, tr + inc*n - start)
                             }
                             else if((tr + n*inc) > end && tr < end && (tr - end) > tol) {
-                                e = (tr - end) / inc
+                                e = as.integer((tr - end) / inc)
+                                flog.error("setting e %f", e)
                                 flag = 1
                             }
-                            flog.error("reading s %f e %f", tr, tr + n*inc)
+                            flog.error("reading time %f e %f", tr, tr + n*inc)
                             vals = obj$read_values(f, n)
+                            flog.error("reading vals pos %d:%d", s, e)
                             vals = vals[s:e]
+                            flog.error("len vals %d", length(vals))
 
                             obj$tdms_object$update_data(vals)
                             obj$tdms_object$read_so_far = tr + length(vals)*inc
