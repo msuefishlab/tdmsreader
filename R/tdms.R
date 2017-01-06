@@ -294,16 +294,22 @@ TdmsSegment <- R6Class("TdmsSegment",
                             n = obj$number_values
                             inc = obj$tdms_object$properties[['wf_increment']]
                             tr = obj$tdms_object$read_so_far
+                            s = 1
 
-                            if((n * inc + tr) > (end - start)) {
-                                n = (end - start - tr) / inc
+                            if(tr + n*inc < start) {
+                                s = start - tr - n*inc
+                                break
                             }
-                            if(n < 1) {
+                            else if(tr > end) {
+                                e = tr - end
                                 flag = 1
                                 break
                             }
-                            obj$tdms_object$update_data(obj$read_values(f, n))
-                            obj$tdms_object$read_so_far = tr + n * inc
+                            vals = obj$read_values(f, n)
+                            vals = vals[s:e]
+
+                            obj$tdms_object$update_data(vals)
+                            obj$tdms_object$read_so_far = tr + length(vals)
                         }
                     }
                     if(flag) {

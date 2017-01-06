@@ -1,7 +1,5 @@
 sudo: false
 language: R
 cache: packages
-script:
-  Rscript -e 'devtools::test()'
 after_success:
   Rscript -e 'lintr::lint_package()'
