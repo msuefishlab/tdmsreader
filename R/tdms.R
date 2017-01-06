@@ -5,6 +5,7 @@ library(R6)
 
 fl = flog.debug
 
+
 tdsDataType <- list(
     list(length = 0, id = 0, name = "tdsTypeVoid"),
     list(length = 1, id = 1, name = "tdsTypeI8"),
@@ -393,19 +394,13 @@ TdmsObject <- R6Class("TdmsObject",
             if (self$number_values == 0) {
                 # non-data or metadata segment
             }
-            else if (!is.null(start) && !is.null(end)) {
-                num_vals = (end - start) / self$properties[['wf_increment']]
-                if(num_vals > self$number_values) {
-                    fl("nv %f numvals %f e %f s %f", self$number_values, num_vals, end, start)
-                    flog.error("Start/end bigger than specified data")
-                    num_vals = self$number_values
-                }
-                self$data = numeric(num_vals)
+            self$read_so_far = start
+            num_vals = (end - start) / self$properties[['wf_increment']]
+            if(num_vals > self$number_values) {
+                flog.error("Start/end bigger than specified data")
+                num_vals = self$number_values
             }
-            else {
-                fl('calculated %d vals', self$number_values)
-                self$data = numeric(self$number_values)
-            }
+            self$data = numeric(num_vals)
         }
     )
 )
