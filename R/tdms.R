@@ -57,7 +57,13 @@ read_type <- function(f, type) {
     return(s)
 }
 
-
+#' TdmsFile class
+#' 
+#' @docType class
+#' @importFrom R6 R6Class
+#' @export
+#' @format An \code{\link{R6Class}} generator object
+#' @keywords data
 #' @export
 TdmsFile <- R6Class("TdmsFile",
     public = list(
@@ -101,6 +107,13 @@ TdmsFile <- R6Class("TdmsFile",
     )
 )
 
+#' TdmsSegment class
+#' 
+#' @docType class
+#' @importFrom R6 R6Class
+#' @export
+#' @format An \code{\link{R6Class}} generator object
+#' @keywords data
 #' @export
 TdmsSegment <- R6Class("TdmsSegment",
     public = list(
@@ -329,6 +342,13 @@ TdmsSegment <- R6Class("TdmsSegment",
     )
 )
 
+#' TdmsObject class
+#' 
+#' @docType class
+#' @importFrom R6 R6Class
+#' @export
+#' @format An \code{\link{R6Class}} generator object
+#' @keywords data
 #' @export
 TdmsObject <- R6Class("TdmsObject",
     lock_object = FALSE,
@@ -393,7 +413,13 @@ TdmsObject <- R6Class("TdmsObject",
     )
 )
 
-
+#' TdmsSegmentObject class
+#' 
+#' @docType class
+#' @importFrom R6 R6Class
+#' @export
+#' @format An \code{\link{R6Class}} generator object
+#' @keywords data
 #' @export
 TdmsSegmentObject <- R6Class("TdmsSegmentObject",
     public = list(
