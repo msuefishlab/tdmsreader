@@ -25,12 +25,8 @@ test_that("get data from tdms", {
     r = main$objects[[ "/'Untitled'/'Dev1/ai0'"]]
     t = r$time_track(start = 0, end = 1)
     s = r$data
-    png('test.png')
-    print(length(t))
-    print(length(s))
-    plot(t, s, type='l')
-    dev.off()
-
+    expect_equal(t[1:5], c(1e-5,2e-5,3e-5,4e-5,5e-5))
+    expect_equal(s[1:5], c(0.01800260,0.01964717,0.01668694,0.01833151,0.01701586))
 
     close(f)
 })
