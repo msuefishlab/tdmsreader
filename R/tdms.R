@@ -295,24 +295,29 @@ TdmsSegment <- R6Class("TdmsSegment",
                             inc = obj$tdms_object$properties[['wf_increment']]
                             tr = obj$tdms_object$read_so_far
                             s = 1
+                            e = 1
 
                             if(tr + n*inc < start) {
-                                s = start - tr - n*inc
                                 break
                             }
-                            else if(tr > end) {
-                                e = tr - end
+                            else if(start > end) {
                                 flag = 1
                                 break
+                            }
+                            else if(tr + n*inc > start) {
+                                s = (tr + n*inc - start) / inc
+                            }
+                            else if(tr > end) {
+                                e = (tr - end) / inc
                             }
                             vals = obj$read_values(f, n)
                             vals = vals[s:e]
 
                             obj$tdms_object$update_data(vals)
-                            obj$tdms_object$read_so_far = tr + length(vals)
+                            obj$tdms_object$read_so_far = tr + length(vals)*inc
                         }
                     }
-                    if(flag) {
+                    if (flag) {
                         break
                     }
                 }
@@ -334,6 +339,7 @@ TdmsObject <- R6Class("TdmsObject",
         dimension = 1,
         data_type = NULL,
         has_data = FALSE,
+        read_so_far = 0,
         number_values = 0,
         data_insert_position = 1,
         previous_segment_object = NULL,
@@ -342,6 +348,7 @@ TdmsObject <- R6Class("TdmsObject",
             self$data = NULL
             self$properties = new.env(parent = emptyenv())
             self$dimension = 1
+            self$read_so_far = 0
             self$data_type = NULL
             self$has_data = FALSE
             self$number_values = 0
