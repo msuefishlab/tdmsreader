@@ -302,6 +302,8 @@ TdmsSegment <- R6Class("TdmsSegment",
             num_elts = total_data_size / 8
 
             flag = FALSE
+            tol = 1e-3
+            flog.error("pros start %f %f", start, end)
 
             if (self$num_chunks > 0) {
                 for (i in 1:self$num_chunks) {
@@ -312,20 +314,27 @@ TdmsSegment <- R6Class("TdmsSegment",
                             tr = obj$tdms_object$read_so_far
                             s = 1
                             e = n
+                            flog.error("tr %f %f", tr + n*inc, start)
 
-                            if(tr + n*inc < start) {
+                            if((tr + n*inc) < start) {
+                                obj$read_values(f, n)
+                                obj$tdms_object$read_so_far = tr + n*inc
                                 break
                             }
                             else if(tr > end) {
                                 flag = 1
                                 break
                             }
-                            else if(tr + n*inc > start && tr < start) {
+                            else if((tr + n*inc) > start && tr < start) {
                                 s = (tr + n*inc - start) / inc
+                                print('setting s')
+                                print(s)
                             }
-                            else if(tr + n*inc > end && tr < end) {
+                            else if((tr + n*inc) > end && tr < end && (tr - end) > tol) {
                                 e = (tr - end) / inc
+                                flag = 1
                             }
+                            flog.error("reading s %f e %f", tr, tr + n*inc)
                             vals = obj$read_values(f, n)
                             vals = vals[s:e]
 
@@ -396,7 +405,6 @@ TdmsObject <- R6Class("TdmsObject",
             if (self$number_values == 0) {
                 # non-data or metadata segment
             }
-            #self$read_so_far = start
             num_vals = (end - start) / self$properties[['wf_increment']]
             if(num_vals > self$number_values) {
                 flog.error("Start/end bigger than specified data")
