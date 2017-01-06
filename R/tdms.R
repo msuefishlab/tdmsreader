@@ -308,19 +308,19 @@ TdmsSegment <- R6Class("TdmsSegment",
                             inc = obj$tdms_object$properties[['wf_increment']]
                             tr = obj$tdms_object$read_so_far
                             s = 1
-                            e = 1
+                            e = n
 
                             if(tr + n*inc < start) {
                                 break
                             }
-                            else if(start > end) {
+                            else if(tr > end) {
                                 flag = 1
                                 break
                             }
-                            else if(tr + n*inc > start) {
+                            else if(tr + n*inc > start && tr < start) {
                                 s = (tr + n*inc - start) / inc
                             }
-                            else if(tr > end) {
+                            else if(tr + n*inc > end && tr < end) {
                                 e = (tr - end) / inc
                             }
                             vals = obj$read_values(f, n)
@@ -385,12 +385,9 @@ TdmsObject <- R6Class("TdmsObject",
             increment = self$properties[['wf_increment']]
             offset = self$properties[['wf_start_offset']]
             len = length(self$data)
-            if (!is.null(start) && !is.null(end)) {
-                num_vals = (end - start) / self$properties[['wf_increment']]
-                return ((1:num_vals * increment) + offset + start)
-            } else {
-                return (1:len * increment) + offset
-            }
+            num_vals = (end - start) / self$properties[['wf_increment']]
+            ret = (1:num_vals * increment) + offset + start
+            return (ret[1:length(self$data)])
         },
         initialize_data = function(start = NULL, end = NULL) {
             if (self$number_values == 0) {

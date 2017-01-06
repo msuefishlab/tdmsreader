@@ -23,9 +23,13 @@ test_that("get data from tdms", {
 
     main$read_data(f, 0, 1)
     r = main$objects[[ "/'Untitled'/'Dev1/ai0'"]]
-    t = r$time_track(start = start, end = end)
+    t = r$time_track(start = 0, end = 1)
     s = r$data
-    print(t)
+    png('test.png')
+    print(length(t))
+    print(length(s))
+    plot(t, s, type='l')
+    dev.off()
 
 
     close(f)
