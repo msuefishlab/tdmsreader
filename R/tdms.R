@@ -313,7 +313,6 @@ TdmsSegment <- R6Class("TdmsSegment",
                             tr = obj$tdms_object$read_so_far
                             s = 1
                             e = n
-                            #flog.error("tr %f %f %f", tr, tr + n*inc, start)
 
                             if((tr + n*inc) < start) {
                                 flog.error("skipping s %f e %f", tr, tr + n*inc)
@@ -321,18 +320,18 @@ TdmsSegment <- R6Class("TdmsSegment",
                                 obj$tdms_object$read_so_far = tr + n*inc
                                 break
                             }
-                            else if(tr > end) {
+                            if(tr > end) {
                                 flag = 1
                                 break
                             }
-                            else if((tr + n*inc) > start && tr < start) {
-                                s = as.integer((tr + n*inc - start) / inc)
-                                flog.error("setting s %f %f", s, tr + inc*n - start)
+
+                            if((tr + n*inc) > start && tr < start) {
+                                s = n - as.integer((tr + n*inc - start) / inc)
+                                flog.error("setting s %f tr %f int %f end %f mod %f", s, tr, n*inc, start, tr + n*inc - start)
                             }
-                            else if((tr + n*inc) > end && tr < end && (tr - end) > tol) {
-                                e = as.integer((tr - end) / inc)
-                                flog.error("setting e %f", e)
-                                flag = 1
+                            if((tr + n*inc) > end && tr < end && (tr + n*inc - end) > tol) {
+                                e = n - as.integer((tr + n*inc - end) / inc)
+                                flog.error("setting e %f tr %f int %f end %f mod %f", e, tr, n*inc, end, tr + n*inc - end)
                             }
                             flog.error("reading time %f e %f", tr, tr + n*inc)
                             vals = obj$read_values(f, n)
