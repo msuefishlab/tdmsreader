@@ -7,11 +7,9 @@ Read LabVIEW TDMS files using R
 
 ## Install
 
+It is not an official package on CRAN, so you can use devtools to install
+
     devtools::install_github('msuefishlab/tdmsreader')
-
-Check installation with
-
-    library(tdmsreader)
 
 ## Usage
 
@@ -21,7 +19,7 @@ A command line script named is also installed. It might not be installed to a no
 
 The usage of the script is
 
-    tdmsreader <input.tdms> <output.png>
+    tdmsreader input.tdms output.png
 
 The command line script is a simple example of usage of the `tdmsreader` library
 
@@ -31,7 +29,7 @@ The command line script is a simple example of usage of the `tdmsreader` library
 ![](img/test.png)
 
 
-## Credit
+## References
 
-This code couldn't have been done without the python npTDMS and is an almost direct port of of it https://github.com/adamreeve/npTDMS
+python npTDMS package https://github.com/adamreeve/npTDMS
 
