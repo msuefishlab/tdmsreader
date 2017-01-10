@@ -1,5 +1,3 @@
-#!/usr/bin/env Rscript
-
 library(futile.logger)
 library(R6)
 
@@ -98,7 +96,7 @@ TdmsFile <- R6Class("TdmsFile",
         read_data = function(file, start = NULL, end = NULL) {
             for (elt in ls(self$objects)) {
                 obj = self$objects[[elt]]
-                if(obj$has_data) {
+                if (obj$has_data) {
                     obj$initialize_data(start, end)
                 }
             }
@@ -313,28 +311,29 @@ TdmsSegment <- R6Class("TdmsSegment",
                             tr = obj$tdms_object$read_so_far
                             s = 1
                             e = n
+                            tlen = n * inc
 
-                            if((tr + n*inc) < start) {
+                            if ( (tr + tlen) < start) {
                                 obj$read_values(f, n)
-                                obj$tdms_object$read_so_far = tr + n*inc
+                                obj$tdms_object$read_so_far = tr + tlen
                                 break
                             }
-                            if(tr > end) {
+                            if (tr > end) {
                                 flag = 1
                                 break
                             }
 
-                            if((tr + n*inc) > start && tr < start) {
-                                s = n - as.integer((tr + n*inc - start) / inc)
+                            if ( (tr + tlen) > start && tr < start) {
+                                s = n - as.integer( (tr + tlen - start) / inc)
                             }
-                            if((tr + n*inc) > end && tr < end && (tr + n*inc - end) > tol) {
-                                e = n - as.integer((tr + n*inc - end) / inc)
+                            if ( (tr + tlen) > end && tr < end && (tr + tlen - end) > tol) {
+                                e = n - as.integer( (tr + tlen - end) / inc)
                             }
                             vals = obj$read_values(f, n)
                             vals = vals[s:e]
 
                             obj$tdms_object$update_data(vals)
-                            obj$tdms_object$read_so_far = tr + length(vals)*inc
+                            obj$tdms_object$read_so_far = tr + length(vals) * inc
                         }
                     }
                     if (flag) {
@@ -401,7 +400,7 @@ TdmsObject <- R6Class("TdmsObject",
                 # non-data or metadata segment
             }
             num_vals = (end - start) / self$properties[['wf_increment']]
-            if(num_vals > self$number_values) {
+            if (num_vals > self$number_values) {
                 flog.error("Start/end bigger than specified data")
                 num_vals = self$number_values
             }
