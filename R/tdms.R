@@ -326,14 +326,15 @@ TdmsSegment <- R6Class("TdmsSegment",
                             if ( (tr + tlen) > start && tr < start) {
                                 s = n - as.integer( (tr + tlen - start) / inc)
                             }
-                            if ( (tr + tlen) > end && tr < end && (tr + tlen - end) > tol) {
+                            if ( (tr + tlen) > end && tr < end) {
                                 e = n - as.integer( (tr + tlen - end) / inc)
                             }
+
                             vals = obj$read_values(f, n)
                             vals = vals[s:e]
 
                             obj$tdms_object$update_data(vals)
-                            obj$tdms_object$read_so_far = tr + length(vals) * inc
+                            obj$tdms_object$read_so_far = tr + tlen
                         }
                     }
                     if (flag) {
