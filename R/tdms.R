@@ -468,11 +468,9 @@ TdmsSegmentObject <- R6Class("TdmsSegmentObject",
 
                     if (self$prop_type == 32) {
                         s = read_string(f)
-                        fl("%s = %s", prop_name, s)
                         self$tdms_object$properties[[prop_name]] = s
                     } else {
                         s = read_type(f, self$prop_type)
-                        fl("%s = %f %d [ns]", prop_name, s, self$prop_type)
                         self$tdms_object$properties[[prop_name]] = s
                     }
                 }
