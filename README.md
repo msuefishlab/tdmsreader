@@ -7,8 +7,7 @@ Read LabVIEW TDMS files using R
 
 ## Install
 
-It is not an official package on CRAN, so you can use devtools to install
-
+    install.packages('devtools')
     devtools::install_github('msuefishlab/tdmsreader')
 
 
