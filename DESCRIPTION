@@ -14,5 +14,5 @@ Suggests:
     testthat
 RoxygenNote: 5.0.1
 Imports:
-    R6,
-    futile.logger
+    R6 (>= 2.2.0),
+    futile.logger (>= 1.4.3)
