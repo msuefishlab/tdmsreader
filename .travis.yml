@@ -1,5 +1,3 @@
 sudo: false
 language: R
 cache: packages
-after_success:
-  Rscript -e 'lintr::lint_package()'

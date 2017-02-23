@@ -15,4 +15,6 @@ Suggests:
 RoxygenNote: 5.0.1
 Imports:
     R6 (>= 2.2.0),
-    futile.logger (>= 1.4.3)
+    futile.logger (>= 1.4.3),
+    futile.options (>= 1.0.0),
+    lambda.r (>= 1.1.9)
