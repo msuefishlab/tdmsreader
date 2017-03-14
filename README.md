@@ -30,9 +30,15 @@ Read LabVIEW TDMS files using R
 
 ![](img/test.png)
 
+## Notes
 
-## References
+See https://github.com/msuefishlab/tdmsviewer for example usage
 
-python npTDMS package https://github.com/adamreeve/npTDMS
+This only supports only a subset of the TDMS spec and has been tested on single channel 32bit float data
 
-also see https://github.com/msuefishlab/tdmsviewer for example usage
+Feedback welcome!
+
+## Credit
+
+This app is largely a port of the python npTDMS package into R and shares the same LGPL license https://github.com/adamreeve/npTDMS
+
