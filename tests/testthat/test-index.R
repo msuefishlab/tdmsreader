@@ -1,5 +1,4 @@
 library(tdmsreader)
-library(futile.logger)
 
 test_that("get properties from tdms", {
     f = file('file.tdms', 'rb')

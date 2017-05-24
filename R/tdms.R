@@ -1,8 +1,5 @@
 library(R6)
 
-fl = flog.debug
-
-
 tdsDataType <- list(
     list(length = 0, id = 0, name = "tdsTypeVoid"),
     list(length = 1, id = 1, name = "tdsTypeI8"),
