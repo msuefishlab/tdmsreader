@@ -1,6 +1,6 @@
 Package: tdmsreader
 Title: Read tdms files
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: person("Colin", "Diesh", email = "colin.diesh@gmail.com", role = c("aut", "cre"))
 Author: Colin Diesh <colin.diesh@gmail.com>
 Maintainer: Colin Diesh <colin.diesh@gmail.com>
@@ -14,7 +14,4 @@ Suggests:
     testthat
 RoxygenNote: 5.0.1
 Imports:
-    R6 (>= 2.2.0),
-    futile.logger (>= 1.4.3),
-    futile.options (>= 1.0.0),
-    lambda.r (>= 1.1.9)
+    R6 (>= 2.2.0)

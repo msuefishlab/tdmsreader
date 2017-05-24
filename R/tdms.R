@@ -1,4 +1,3 @@
-library(futile.logger)
 library(R6)
 
 fl = flog.debug
@@ -77,7 +76,7 @@ TdmsFile <- R6Class("TdmsFile",
             i = 0
             previous_segment = NULL
             while (TRUE) {
-                fl("PASS %d %d", i, seek(file))
+                #fl("PASS %d %d", i, seek(file))
                 segment = TdmsSegment$new(file)
                 if (segment$eof == 1) {
                     break
@@ -161,7 +160,7 @@ TdmsSegment <- R6Class("TdmsSegment",
             }
 
             kTocType = readBin(f, integer(), size = 4)
-            fl('kToc %d %d', kTocType, seek(f))
+            #fl('kToc %d %d', kTocType, seek(f))
             self$kTocMetaData = bitwAnd(kTocType, bitwShiftL(1, 1))
             self$kTocRawData = bitwAnd(kTocType, bitwShiftL(1, 3))
             self$kTocDAQmxRawData = bitwAnd(kTocType, bitwShiftL(1, 7))
@@ -171,14 +170,14 @@ TdmsSegment <- R6Class("TdmsSegment",
 
 
             self$version = readBin(f, integer(), size = 4)
-            fl("version %d", self$version)
+            #fl("version %d", self$version)
             self$next_segment_offset = readBin(f, 'int', size = 8, endian = 'little')
             self$raw_data_offset = readBin(f, 'int', size = 8, endian = 'little')
 
 
             lead_size = 7 * 4
-            fl("raw_data_offset %d next_segment_offset %d", self$raw_data_offset, self$next_segment_offset)
-            fl("raw_data_offset %016x next_segment_offset %016x", self$raw_data_offset, self$next_segment_offset)
+            #fl("raw_data_offset %d next_segment_offset %d", self$raw_data_offset, self$next_segment_offset)
+            #fl("raw_data_offset %016x next_segment_offset %016x", self$raw_data_offset, self$next_segment_offset)
             self$data_position = self$position + lead_size + self$raw_data_offset
             self$next_segment_pos = self$position + self$next_segment_offset + lead_size
         },
@@ -191,7 +190,7 @@ TdmsSegment <- R6Class("TdmsSegment",
 
 
             total_data_size = self$next_segment_offset - self$raw_data_offset
-            fl('total size %d data_size %d', total_data_size, data_size)
+            #fl('total size %d data_size %d', total_data_size, data_size)
 
             if (data_size < 0 || total_data_size < 0) {
                 stop("Negative data size")
@@ -211,7 +210,7 @@ TdmsSegment <- R6Class("TdmsSegment",
                     }
                 }
             } else {
-                flog.error("Data size %d is not a multiple of the chunk size %d", total_data_size, data_size)
+                print("Data size %d is not a multiple of the chunk size %d", total_data_size, data_size)
                 self$num_chunks = 1 + total_data_size %/% data_size
                 self$final_chunk_proportion = chunk_remainder / data_size
 
@@ -223,7 +222,7 @@ TdmsSegment <- R6Class("TdmsSegment",
                     }
                 }
             }
-            fl("num_chunks %d", self$num_chunks)
+            #fl("num_chunks %d", self$num_chunks)
         },
 
         read_metadata = function(f, objects, previous_segment=NULL) {
@@ -268,16 +267,16 @@ TdmsSegment <- R6Class("TdmsSegment",
                         }
                         if (obj_index != -1) {
                             updating_existing = TRUE
-                            fl("Updating object in segment list")
+                            #fl("Updating object in segment list")
                             segment_obj = self$ordered_objects[[i]]
                         }
                     }
                     if (!updating_existing) {
                         if (!is.null(obj$previous_segment_object)) {
-                            fl("Copying previous segment object")
+                            #fl("Copying previous segment object")
                             segment_obj = obj$previous_segment_object$clone()
                         } else {
-                            fl("Creating new segment object")
+                            #fl("Creating new segment object")
                             segment_obj = TdmsSegmentObject$new(obj)
                         }
                         self$ordered_objects[[length(self$ordered_objects) + 1]] = segment_obj
@@ -292,7 +291,7 @@ TdmsSegment <- R6Class("TdmsSegment",
 
         read_raw_data = function(f, start = NULL, end = NULL) {
             if (!self$kTocRawData) {
-                fl("No raw data in segment")
+                #fl("No raw data in segment")
                 return
             }
             seek(f, self$data_position)
@@ -343,7 +342,7 @@ TdmsSegment <- R6Class("TdmsSegment",
                 }
             }
             else {
-                flog.error('No chunks')
+                print('No chunks')
             }
         }
     )
@@ -402,7 +401,7 @@ TdmsObject <- R6Class("TdmsObject",
             }
             num_vals = (end - start) / self$properties[['wf_increment']]
             if (num_vals > self$number_values) {
-                flog.error("Start/end bigger than specified data")
+                print("Start/end bigger than specified data")
                 num_vals = self$number_values
             }
             self$data = numeric(num_vals)
@@ -441,7 +440,7 @@ TdmsSegmentObject <- R6Class("TdmsSegmentObject",
             if (raw_data_index == -1) {
                 self$has_data = FALSE
             } else if (raw_data_index == 0) {
-                fl("Object has same data structure as in previous segment")
+                #fl("Object has same data structure as in previous segment")
                 self$has_data = TRUE
             } else {
                 self$has_data = TRUE
@@ -459,7 +458,7 @@ TdmsSegmentObject <- R6Class("TdmsSegmentObject",
                 }
 
             }
-            fl("num_val %d data_size %d", self$number_values, self$data_size)
+            #fl("num_val %d data_size %d", self$number_values, self$data_size)
 
             num_properties = readBin(f, integer(), size = 4)
             if (num_properties > 0) {
