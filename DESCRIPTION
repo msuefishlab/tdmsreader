@@ -14,4 +14,5 @@ Suggests:
     testthat
 RoxygenNote: 5.0.1
 Imports:
-    R6 (>= 2.2.0)
+    R6 (>= 2.2.0),
+    optparse (>= 1.4.3)
