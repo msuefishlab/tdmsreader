@@ -5,35 +5,35 @@ library(ggplot2)
 
 suppressPackageStartupMessages(library('optparse'))
 parser <- OptionParser()
-parser <- add_option(parser, c('-f', '--file'), dest='tdms', help='TDMS file input')
-parser <- add_option(parser, c('-p', '--peak'), dest='peak', help='Peak file input')
-parser <- add_option(parser, c('-v', '--verbose'), dest='verbose', help='Print verbose output')
-parser <- add_option(parser, c('-c', '--channel'), dest='channel', help='Channel name')
-parser <- add_option(parser, c('-w', '--window'), dest='window', type = 'double', help='Window size around peak value')
-parser <- add_option(parser, c('-b', '--prebaseline'), dest='preBaselineSubtract', type = 'logical', action="store_true", help='Pre-normalization baseline subtract')
-parser <- add_option(parser, c('-d', '--postbaseline'), dest='postBaselineSubtract', type = 'logical', action="store_true", help='Post-normalization baseline subtract')
-parser <- add_option(parser, c('-n', '--normalize'), dest='normalize', type = 'logical', action="store_true", help='Normalize waveform between 0-1 peak to peak height')
-parser <- add_option(parser, c('-o', '--out'), dest='out', help='Output png')
+parser <- add_option(parser, c('-f', '--file'), help='TDMS file input')
+parser <- add_option(parser, c('-p', '--peak'), help='Peak file input')
+parser <- add_option(parser, c('-v', '--verbose'), help='Print verbose output')
+parser <- add_option(parser, c('-c', '--channel'), default = "/'Untitled'/'Dev1/ai0'", help='Channel name')
+parser <- add_option(parser, c('-w', '--window'), default = 0.005, type = 'double', help='Window size around peak value')
+parser <- add_option(parser, c('-b', '--prebaseline'), default=F, dest='preBaselineSubtract', type = 'logical', action="store_true", help='Pre-normalization baseline subtract')
+parser <- add_option(parser, c('-d', '--postbaseline'), default=F, dest='postBaselineSubtract', type = 'logical', action="store_true", help='Post-normalization baseline subtract')
+parser <- add_option(parser, c('-n', '--normalize'), default=F, type = 'logical', action="store_true", help='Normalize waveform between 0-1 peak to peak height')
+parser <- add_option(parser, c('-a', '--alpha'), default=0.05, type = 'double', help='Normalize waveform between 0-1 peak to peak height')
+parser <- add_option(parser, c('-o', '--out'), help='Output png')
 
 options = commandArgs(trailingOnly = TRUE)
 opts = parse_args(parser, args = options)
 
-if (is.null(opts$tdms) || is.null(opts$peak)) {
+if (is.null(opts$file) || is.null(opts$peak)) {
     print_help(parser)
 }
 
-if (!file.exists(opts$tdms)) {
+if (!file.exists(opts$file)) {
     stop('TDMS file not found')
 }
-if (!file.exists(opts$tdms)) {
+if (!file.exists(opts$peak)) {
     stop('Peak file not found')
 }
-m = file(opts$tdms, 'rb')
+m = file(opts$file, 'rb')
 main = TdmsFile$new(m)
-peaks = read.table(opts$peak,sep='\t')
+peaks = read.table(opts$peak, sep='\t')
 
-c = ifelse(is.null(opts$channel), "/'Untitled'/'Dev1/ai0'", opts$channel)
-r = main$objects[[c]]
+r = main$objects[[opts$channel]]
 if(is.null(r)) {
     stop('Channel not found')
 }
@@ -41,16 +41,14 @@ inc = r$properties[['wf_increment']]
 max = r$number_values * inc
 e = ifelse(is.null(opts$end), max, opts$end)
 s = ifelse(is.null(opts$start), 0, opts$start)
-ws = ifelse(is.null(opts$window), 0.005, as.numeric(opts$window))
-
 
 main$read_data(m, s, e)
 
 print('gathering peak data...')
 peakdata = apply(peaks, 1, function(row) {
     start = as.numeric(row[[1]])
-    s = start - ws / 2
-    e = start + ws / 2
+    s = start - opts$window / 2
+    e = start + opts$window / 2
     sp = s/inc
     ep = e/inc
     dat = r$data[sp:ep]
@@ -59,13 +57,13 @@ peakdata = apply(peaks, 1, function(row) {
     if(row[[2]] == '-') {
         dat = -dat
     }
-    if(!is.null(opts$preBaselineSubtract)) {
+    if(opts$preBaselineSubtract) {
         dat = dat - mean(dat[1:25])
     }
-    if(!is.null(opts$normalize)) {
+    if(opts$normalize) {
         dat = (dat - min(dat)) / (max(dat) - min(dat))
     }
-    if(!is.null(opts$postBaselineSubtract)) {
+    if(opts$postBaselineSubtract) {
         dat = dat - mean(dat[1:25])
     }
     # rounding important here to avoid different values being collapsed. significant digits may change on sampling rate of tdms
@@ -74,16 +72,15 @@ peakdata = apply(peaks, 1, function(row) {
 
 print('combining data frames...')
 plotdata = do.call(rbind, peakdata)
-plotdata=plotdata[1:100000,]
 
 print('plotting average peak...')
-png(paste0(basename(opts$tdms), '.average.png'), width=1000, height=600)
+png(paste0(basename(opts$file), '.average.png'), width=1000, height=600)
 ggplot(data=plotdata, aes(x=time, y=data)) + stat_summary(aes(y = data), fun.y=mean, geom='line')
 dev.off()
 
 print('plotting total peak...')
-png(paste0(basename(opts$tdms), '.all.png'), width=1000, height=600)
-ggplot(data=plotdata, aes(x=time, y=data, group=col)) + geom_line()
+png(paste0(basename(opts$file), '.all.png'), width=1000, height=600)
+ggplot(data=plotdata, aes(x=time, y=data, group=col)) + geom_line(alpha=opts$alpha)
 dev.off()
 
 #if(input$analyzeWaveform) {
