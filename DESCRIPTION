@@ -15,4 +15,5 @@ Suggests:
 RoxygenNote: 5.0.1
 Imports:
     R6 (>= 2.2.0),
-    optparse (>= 1.4.3)
+    optparse (>= 1.4.3),
+    ggplot2 (>= 2.2.1)
