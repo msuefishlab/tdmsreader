@@ -3,81 +3,56 @@
 library(tdmsreader)
 suppressPackageStartupMessages(library("optparse"))
 parser <- OptionParser()
-parser <- add_option(parser, c("-t", "--tdms"), dest="tdms", help="TDMS file input")
+parser <- add_option(parser, c("-f", "--file"), dest="tdms", help="TDMS file input")
 parser <- add_option(parser, c("-v", "--verbose"), dest="verbose", help="Print verbose output")
 parser <- add_option(parser, c("-c", "--channel"), help="Channel name")
 parser <- add_option(parser, c("-s", "--start"), help="Start time")
 parser <- add_option(parser, c("-e", "--end"), help="End time")
+parser <- add_option(parser, c("-o", "--out"), dest="out", help="Output png")
 
 options = commandArgs(trailingOnly = TRUE)
 opts = parse_args(parser, args = options)
-print(opts)
 
-### Program
-
-if (length(options) < 1) {
+if (is.null(opts$tdms) || is.null(opts$out)) {
     stop('Usage: tdmsplot -f <file> -c <object> -o <output>')
 }
 
-# open file
-f = options[1]
-if(length(options)>2) {
-    s = as.numeric(options[3])
-    e = as.numeric(options[4])
+if (!file.exists(opts$tdms)) {
+    stop('File not found')
 }
-if(
-
-main = TdmsFile$new(my_file)
-main$read_data(my_file, start, end)
+m = file(opts$tdms, 'rb')
+main = TdmsFile$new(m)
 
 
-s = ranges$xmin
-e = ranges$xmax
 
-
-f = input$tdmsfile
-if (!file.exists(f)) {
-    return()
+c = ifelse(is.null(opts$channel), "/'Untitled'/'Dev1/ai0'", opts$channel)
+r = main$objects[[c]]
+if(is.null(r)) {
+    stop('Channel not found')
 }
-m = file(f, 'rb')
-main = tdmsreader::TdmsFile$new(m)
+max = r$number_values * r$properties[['wf_increment']]
+e = ifelse(is.null(opts$end), max, opts$end)
+s = ifelse(is.null(opts$start), 0, opts$start)
+
 main$read_data(m, s, e)
-
-r = main$objects[[input$object]]
 t = r$time_track(start = s, end = e)
 dat = r$data
 close(m)
-
+print(opts$out)
+png(opts$out, width=2000,height=500)
 if(e - s > 20) {
     dat = dat[seq(1, length(dat), by = 10)]
     t = t[seq(1, length(t), by = 10)]
     dat = dat[1:length(t)]
     plot(t, dat, type = 'l', xlab = 'time', ylab = 'volts')
-    output$txt2 <- renderText('Note: displayed data is downsampled to improve speed')
 } else if(e - s > 10) {
     dat = dat[seq(1, length(dat), by = 5)]
     t = t[seq(1, length(t), by = 5)]
     dat = dat[1:length(t)]
     plot(t, dat, type = 'l', xlab = 'time', ylab = 'volts')
-    output$txt2 <- renderText('Note: displayed data is downsampled to improve speed')
 } else {
     output$txt2 <- renderText('')
     plot(t, dat, type = 'l', xlab = 'time', ylab = 'volts')
 }
-
-
-
-
-
-for (elt in ls(main$objects)) {
-    r = main$objects[[elt]]
-    if (r$has_data) {
-        t = r$time_track(start = start, end = end)
-        s = r$data
-        png(options[2], width=1200, height=600)
-        plot(t, s, type='l')
-        dev.off()
-    }
-}
-
-close(my_file)
+title(opts$tdms)
+dev.off()
