@@ -2,6 +2,7 @@
 
 library(tdmsreader)
 library(ggplot2)
+library(reshape2)
 
 suppressPackageStartupMessages(library('optparse'))
 parser <- OptionParser()
@@ -43,6 +44,7 @@ e = ifelse(is.null(opts$end), max, opts$end)
 s = ifelse(is.null(opts$start), 0, opts$start)
 
 main$read_data(m, s, e)
+close(m)
 
 print('gathering peak data...')
 peakdata = apply(peaks, 1, function(row) {
@@ -73,118 +75,139 @@ peakdata = apply(peaks, 1, function(row) {
 print('combining data frames...')
 plotdata = do.call(rbind, peakdata)
 
+
+
+
+
+
+
+ret = acast(plotdata, time ~ col, value.var = 'data', fun.aggregate = mean)
+avg = apply(ret, 1, mean)
+data = data.frame(time = as.numeric(names(avg)), val = as.numeric(avg))
+p1pos = which.max(data$val)
+p1 = data[p1pos, ]
+p2pos = which.min(data$val)
+p2 = data[p2pos, ]
+leftside = data[1:p1pos, ]
+middle = data[p1pos:p2pos, ]
+rightside = data[p2pos:nrow(data), ]
+
+baseline = mean(data$val[1:25])
+p0 = NULL
+t1 = NULL
+t2 = NULL
+slope1 = NULL
+slope2 = NULL
+s1 = NULL
+s2 = NULL
+zc1 = NULL
+zc2 = NULL
+for(i in nrow(leftside):1) {
+    if(leftside[i, 'val'] < baseline) {
+        zc1 = leftside[i,]
+        tzc1 = zc1$time
+        p0calculator = leftside[leftside$time >= tzc1-0.0005 & leftside$time <= tzc1,]
+        p0 = p0calculator[which.min(p0calculator$val), ]
+        break
+    }
+}
+for(i in nrow(leftside):1) {
+    if(leftside[i, 'val'] < baseline + 0.02 * (p1$val - p2$val)) {
+        t1 = leftside[i,]
+        slope1 = leftside[i:nrow(leftside), ]
+        break
+    }
+}
+for(i in 1:nrow(rightside)) {
+    if(rightside[i, 'val'] > baseline - 0.02 * (p1$val - p2$val)) {
+        t2 = rightside[i,]
+        break
+    }
+}
+
+slope1_max = -100000
+for(i in 1:(nrow(slope1)-1)) {
+    s = (slope1[i+1, 'val'] - slope1[i, 'val']) / (slope1[i+1, 'time'] - slope1[i, 'time'])
+    if(s > slope1_max) {
+        slope1_max = s
+        s1 = slope1[i,]
+    }
+}
+slope2_max = 100000
+for(i in 1:(nrow(middle)-1)) {
+    s = (middle[i+1, 'val'] - middle[i, 'val']) / (middle[i+1, 'time'] - middle[i, 'time'])
+    if(s < slope2_max) {
+        slope2_max = s
+        s2 = middle[i, ]
+    }
+}
+for(i in 1:nrow(middle)) {
+    if(middle[i, 'val'] < baseline) {
+        zc2 = middle[i,]
+        break
+    }
+}
+
+
+
+landmark_table = data.frame(landmark = 'p0', time = p0$time, val = p0$val)
+landmark_table = rbind(landmark_table, data.frame(landmark = 'p1', time = p1$time, val = p1$val))
+landmark_table = rbind(landmark_table, data.frame(landmark = 'p2', time = p2$time, val = p2$val))
+landmark_table = rbind(landmark_table, data.frame(landmark = 't1', time = t1$time, val = t1$val))
+landmark_table = rbind(landmark_table, data.frame(landmark = 't2', time = t2$time, val = t2$val))
+landmark_table = rbind(landmark_table, data.frame(landmark = 's1', time = s1$time, val = s1$val))
+landmark_table = rbind(landmark_table, data.frame(landmark = 's2', time = s2$time, val = s2$val))
+landmark_table = rbind(landmark_table, data.frame(landmark = 'zc1', time = zc1$time, val = zc1$val))
+landmark_table = rbind(landmark_table, data.frame(landmark = 'zc2', time = zc2$time, val = zc2$val))
+
+
+
+stats = data.frame(amplitude=landmark_table[landmark_table$landmark=='p1',]$val - landmark_table[landmark_table$landmark=='p2',]$val,duration=landmark_table[landmark_table$landmark=='t2',]$time - landmark_table[landmark_table$landmark=='t1',]$time)
+write.table(landmark_table, paste0(basename(opts$file), '.landmarks.csv'), quote=F, row.names=F)
+write.table(stats, paste0(basename(opts$file), '.stats.csv'), quote=F, row.names=F)
+
+
+
+
+
+mtitle = basename(opts$file)
+
 print('plotting average peak...')
 png(paste0(basename(opts$file), '.average.png'), width=1000, height=600)
-ggplot(data=plotdata, aes(x=time, y=data)) + stat_summary(aes(y = data), fun.y=mean, geom='line')
+myplot = ggplot(data=plotdata, aes(x=time, y=data)) + stat_summary(aes(y = data), fun.y=mean, geom='line')
+myplot + ggtitle(mtitle)
 dev.off()
 
 print('plotting total peak...')
 png(paste0(basename(opts$file), '.all.png'), width=1000, height=600)
-ggplot(data=plotdata, aes(x=time, y=data, group=col)) + geom_line(alpha=opts$alpha)
+myplot2 = ggplot(data=plotdata, aes(x=time, y=data, group=col)) + geom_line(alpha=opts$alpha)
+myplot2 + ggtitle(mtitle)
 dev.off()
 
-#if(input$analyzeWaveform) {
-#    r = myreact()
-#    myplot = myplot + geom_point(data = r, aes(x=time, y=val, color=landmark), size = 4) + scale_colour_brewer(palette = "Set1")
+
+
+print('plotting average peak (with landmarks)...')
+png(paste0(basename(opts$file), '.average.landmarks.png'), width=1000, height=600)
+myplot = myplot + geom_point(data = landmark_table, aes(x=time, y=val, color=landmark), size = 4) + scale_colour_brewer(palette = "Set1")
+myplot + ggtitle(mtitle)
+dev.off()
+
+print('plotting total peak (with landmarks)...')
+png(paste0(basename(opts$file), '.all.landmarks.png'), width=1000, height=600)
+myplot2 = myplot2 + geom_point(data = landmark_table, aes(x=time, y=val, color=landmark), size = 4) + scale_colour_brewer(palette = "Set1")
+myplot2 + ggtitle(mtitle)
+dev.off()
+
+
+#if(input$drawTwoPercent) {
+#    ret = acast(plotdata, time ~ col, value.var = 'data', fun.aggregate = mean)
+#    avg = apply(ret, 1, mean)
+#    data = data.frame(time=as.numeric(names(avg)), val=as.numeric(avg))
 #
-#    output$landmarks = DT::renderDataTable(r)
-#    output$stats = renderText(sprintf('P1-P2: %f\nT2-T1: %f',
-#        r[r$landmark=='p1',]$val - r[r$landmark=='p2',]$val,
-#        r[r$landmark=='t2',]$time - r[r$landmark=='t1',]$time)
-#    )
-#
-#
-#    if(input$drawTwoPercent) {
-#        ret = acast(plotdata, time ~ col, value.var = 'data', fun.aggregate = mean)
-#        avg = apply(ret, 1, mean)
-#        data = data.frame(time=as.numeric(names(avg)), val=as.numeric(avg))
-#
-#        baseline = mean(data$val[1:50])
-#        myplot = myplot + geom_hline(yintercept = baseline, color = 'red')
-#        myplot = myplot + geom_hline(yintercept = baseline + 0.02 * (r[r$landmark=='p1',]$val - r[r$landmark=='p2',]$val), color = 'yellow')
-#        myplot = myplot + geom_hline(yintercept = baseline - 0.02 * (r[r$landmark=='p1',]$val - r[r$landmark=='p2',]$val), color = 'green')
-#    }
+#    baseline = mean(data$val[1:50])
+#    myplot = myplot + geom_hline(yintercept = baseline, color = 'red')
+#    myplot = myplot + geom_hline(yintercept = baseline + 0.02 * (r[r$landmark=='p1',]$val - r[r$landmark=='p2',]$val), color = 'yellow')
+#    myplot = myplot + geom_hline(yintercept = baseline - 0.02 * (r[r$landmark=='p1',]$val - r[r$landmark=='p2',]$val), color = 'green')
 #}
-#
-#
-#    plotdata = dataMatrix()
-#        ret = acast(plotdata, time ~ col, value.var = 'data', fun.aggregate = mean)
-#        avg = apply(ret, 1, mean)
-#        data = data.frame(time = as.numeric(names(avg)), val = as.numeric(avg))
-#        p1pos = which.max(data$val)
-#        p1 = data[p1pos, ]
-#        p2pos = which.min(data$val)
-#        p2 = data[p2pos, ]
-#        leftside = data[1:p1pos, ]
-#        middle = data[p1pos:p2pos, ]
-#        rightside = data[p2pos:nrow(data), ]
-#
-#        baseline = mean(data$val[1:25])
-#        p0 = NULL
-#        t1 = NULL
-#        t2 = NULL
-#        slope1 = NULL
-#        slope2 = NULL
-#        s1 = NULL
-#        s2 = NULL
-#        zc1 = NULL
-#        zc2 = NULL
-#        for(i in nrow(leftside):1) {
-#            if(leftside[i, 'val'] < baseline) {
-#                zc1 = leftside[i,]
-#                tzc1 = zc1$time
-#                p0calculator = leftside[leftside$time >= tzc1-0.0005 & leftside$time <= tzc1,]
-#                p0 = p0calculator[which.min(p0calculator$val), ]
-#                break
-#            }
-#        }
-#        for(i in nrow(leftside):1) {
-#            if(leftside[i, 'val'] < baseline + 0.02 * (p1$val - p2$val)) {
-#                t1 = leftside[i,]
-#                slope1 = leftside[i:nrow(leftside), ]
-#                break
-#            }
-#        }
-#        for(i in 1:nrow(rightside)) {
-#            if(rightside[i, 'val'] > baseline - 0.02 * (p1$val - p2$val)) {
-#                t2 = rightside[i,]
-#                break
-#            }
-#        }
-#
-#        slope1_max = -100000
-#        for(i in 1:(nrow(slope1)-1)) {
-#            s = (slope1[i+1, 'val'] - slope1[i, 'val']) / (slope1[i+1, 'time'] - slope1[i, 'time'])
-#            if(s > slope1_max) {
-#                slope1_max = s
-#                s1 = slope1[i,]
-#            }
-#        }
-#        slope2_max = 100000
-#        for(i in 1:(nrow(middle)-1)) {
-#            s = (middle[i+1, 'val'] - middle[i, 'val']) / (middle[i+1, 'time'] - middle[i, 'time'])
-#            if(s < slope2_max) {
-#                slope2_max = s
-#                s2 = middle[i, ]
-#            }
-#        }
-#        for(i in 1:nrow(middle)) {
-#            if(middle[i, 'val'] < baseline) {
-#                zc2 = middle[i,]
-#                break
-#            }
-#        }
-#
-#
-#
-#        ret = data.frame(landmark = 'p0', time = p0$time, val = p0$val)
-#        ret = rbind(ret, data.frame(landmark = 'p1', time = p1$time, val = p1$val))
-#        ret = rbind(ret, data.frame(landmark = 'p2', time = p2$time, val = p2$val))
-#        ret = rbind(ret, data.frame(landmark = 't1', time = t1$time, val = t1$val))
-#        ret = rbind(ret, data.frame(landmark = 't2', time = t2$time, val = t2$val))
-#        ret = rbind(ret, data.frame(landmark = 's1', time = s1$time, val = s1$val))
-#        ret = rbind(ret, data.frame(landmark = 's2', time = s2$time, val = s2$val))
-#        ret = rbind(ret, data.frame(landmark = 'zc1', time = zc1$time, val = zc1$val))
-#        ret = rbind(ret, data.frame(landmark = 'zc2', time = zc2$time, val = zc2$val))
-#        ret
-close(m)
+
+

@@ -3,59 +3,45 @@
 library(tdmsreader)
 suppressPackageStartupMessages(library('optparse'))
 parser <- OptionParser()
-parser <- add_option(parser, c('-f', '--file'), dest='tdms', help='TDMS file input')
-parser <- add_option(parser, c('-v', '--verbose'), dest='verbose', help='Print verbose output')
-parser <- add_option(parser, c('-c', '--channel'), dest='channel', help='Channel name')
-parser <- add_option(parser, c('-s', '--start'), type="double", dest='start', help='Start time')
-parser <- add_option(parser, c('-e', '--end'), type="double", dest='end', help='End time')
-parser <- add_option(parser, c('-t', '--type'), dest='type', help='Peak finder type, cutoff or sigma')
-parser <- add_option(parser, c('-n', '--number'), type="double", dest='number', help='Peak finder threshold, sigma or voltage threshold')
-parser <- add_option(parser, c('-d', '--direction'), dest='direction', help='Direction, enter either positive/negative/none')
-parser <- add_option(parser, c('-o', '--out'), dest='out', help='Output png')
+parser <- add_option(parser, c('-f', '--file'), help='TDMS file input')
+parser <- add_option(parser, c('-v', '--verbose'), default=F, type="logical", action="store_true", help='Print verbose output')
+parser <- add_option(parser, c('-c', '--channel'), default="/'Untitled'/'Dev1/ai0'", help='Channel name')
+parser <- add_option(parser, c('-t', '--type'), default="sigma", help='Peak finder type, cutoff or sigma')
+parser <- add_option(parser, c('-n', '--number'), type="double", default=5, help='Peak finder threshold, sigma or voltage threshold')
+parser <- add_option(parser, c('-d', '--direction'), default = "none", help='Direction, enter either positive/negative/none')
+parser <- add_option(parser, c('-w', '--whole'), default = T, type="logical", action="store_false", help="Remove first and last 15 seconds")
 
 options = commandArgs(trailingOnly = TRUE)
 opts = parse_args(parser, args = options)
 
-if (is.null(opts$tdms)) {
-    stop('Usage: peak_finder -f <file> -t <sigma|cutoff> -n <cutoff_value> -o <output>')
+if (is.null(opts$file)) {
+    print_help(parser)
 }
 
-if (!file.exists(opts$tdms)) {
-    stop('File not found')
+if (!file.exists(opts$file)) {
+    stop('TDMS file not found')
 }
 m = file(opts$tdms, 'rb')
 main = TdmsFile$new(m)
 
-
-
-c = ifelse(is.null(opts$channel), "/'Untitled'/'Dev1/ai0'", opts$channel)
-r = main$objects[[c]]
+r = main$objects[[opts$channel]]
 if(is.null(r)) {
     stop('Channel not found')
 }
 max = r$number_values * r$properties[['wf_increment']]
-e = ifelse(is.null(opts$end), max, opts$end)
-s = ifelse(is.null(opts$start), 0, opts$start)
-dir = ifelse(is.null(opts$direction), 'none', opts$direction)
-type = ifelse(is.null(opts$type), 'sigma', opts$type)
-val = ifelse(is.null(opts$number), 5, opts$number)
+e = ifelse(opts$whole, max, max-15)
+s = ifelse(opts$whole, 0, 15)
 
 main$read_data(m, s, e)
 t = r$time_track(start = s, end = e)
 dat = r$data
 close(m)
 
-
-savedPeaks = 0
-plusPeaks = 0
-minusPeaks = 0
-
 mysd = sd(dat)
 mymean = mean(dat)
-
 currTime = 0
 
-if(dir == 'none' & type == 'volts') {
+if(opts$direction == 'none' & opts$type == 'volts') {
     stop('Need to specify direction if using voltage cutoff')
 }
 
@@ -64,35 +50,30 @@ peaks = data.frame(peaks=numeric(), direction=character())
 for(i in 1:length(dat)) {
     ns = i - 1000
     ne = i + 1000
+    if(opts$verbose & i%%100000==0) {
+        print(sprintf("%f%%",100*i/length(dat)))
+    }
     if(!is.na(t[i]) & !is.na(dat[i]) & (t[i] - currTime) > 0.001) {
-        if(type == 'sigma') {
-            if(dat[i] > mymean + mysd * val & (dir == 'none' | dir == 'positive')) {
+        if(opts$type == 'sigma') {
+            if(dat[i] > mymean + mysd * opts$number & (opts$direction == 'none' | opts$direction == 'positive')) {
                 peaks = rbind(peaks, data.frame(peaks=t[ns + which.max(dat[ns:ne])], direction='+'))
                 currTime = t[i]
-                savedPeaks = savedPeaks + 1
-                plusPeaks = plusPeaks + 1
-            } else if(dat[i] < mymean - mysd * val & (dir == 'none' | dir == 'negative')) {
+            } else if(dat[i] < mymean - mysd * opts$number  & (opts$direction == 'none' | opts$direction == 'negative')) {
                 peaks = rbind(peaks, data.frame(peaks=t[ns + which.min(dat[ns:ne])], direction='-'))
                 currTime = t[i]
-                savedPeaks = savedPeaks + 1
-                minusPeaks = minusPeaks + 1
             }
-        } else if(type == 'volts') {
-            if(dat[i] > val & (dir == 'positive')) {
+        } else if(opts$type == 'volts') {
+            if(dat[i] > opts$number & (opts$direction == 'positive')) {
                 peaks = rbind(peaks, data.frame(peaks=t[ns + which.max(dat[ns:ne])], direction='+'))
                 print(t[ns + which.max(dat[ns:ne])])
                 currTime = t[i]
-                savedPeaks = savedPeaks + 1
-                plusPeaks = plusPeaks + 1
-            } else if(dat[i] < val & (dir == 'negative')) {
+            } else if(dat[i] < opts$number & (opts$direction == 'negative')) {
                 peaks = rbind(peaks, data.frame(peaks=t[ns + which.min(dat[ns:ne])], direction='-'))
                 currTime = t[i]
-                savedPeaks = savedPeaks + 1
-                minusPeaks = minusPeaks + 1
             }
         }
     }
 }
 
-write.table(peaks, file=ifelse(is.null(opts$output),"",opts$output), quote=F, row.names=F, sep='\t', col.names=F)
+write.table(peaks, file=paste0(basename(opts$file),'.peaks.csv'), quote=F, row.names=F, sep='\t', col.names=F)
 
