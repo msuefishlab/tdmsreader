@@ -94,5 +94,5 @@ for(i in 1:length(dat)) {
     }
 }
 
-write.table(peaks, file=ifelse(is.null(opts$output),"",opts$output), quote=F, row.names=F, sep='\t')
+write.table(peaks, file=ifelse(is.null(opts$output),"",opts$output), quote=F, row.names=F, sep='\t', col.names=F)
 

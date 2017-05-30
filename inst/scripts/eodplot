@@ -1,6 +1,8 @@
 #!/usr/bin/env Rscript
 
 library(tdmsreader)
+library(ggplot2)
+
 suppressPackageStartupMessages(library('optparse'))
 parser <- OptionParser()
 parser <- add_option(parser, c('-f', '--file'), dest='tdms', help='TDMS file input')
@@ -8,6 +10,9 @@ parser <- add_option(parser, c('-p', '--peak'), dest='peak', help='Peak file inp
 parser <- add_option(parser, c('-v', '--verbose'), dest='verbose', help='Print verbose output')
 parser <- add_option(parser, c('-c', '--channel'), dest='channel', help='Channel name')
 parser <- add_option(parser, c('-w', '--window'), dest='window', type = 'double', help='Window size around peak value')
+parser <- add_option(parser, c('-b', '--prebaseline'), dest='preBaselineSubtract', type = 'logical', help='Pre-normalization baseline subtract')
+parser <- add_option(parser, c('-d', '--postbaseline'), dest='postBaselineSubtract', type = 'logical', help='Post-normalization baseline subtract')
+parser <- add_option(parser, c('-n', '--normalize'), dest='normalize', type = 'logical', help='Normalize waveform between 0-1 peak to peak height')
 parser <- add_option(parser, c('-o', '--out'), dest='out', help='Output png')
 
 options = commandArgs(trailingOnly = TRUE)
@@ -22,63 +27,60 @@ if (!file.exists(opts$tdms)) {
 }
 m = file(opts$tdms, 'rb')
 main = TdmsFile$new(m)
-peaks = read.table(opts$peak)
-
-
+peaks = read.table(opts$peak,sep='\t')
 
 c = ifelse(is.null(opts$channel), "/'Untitled'/'Dev1/ai0'", opts$channel)
 r = main$objects[[c]]
 if(is.null(r)) {
     stop('Channel not found')
 }
-
-max = r$number_values * r$properties[['wf_increment']]
+inc = r$properties[['wf_increment']]
+max = r$number_values * inc
 e = ifelse(is.null(opts$end), max, opts$end)
 s = ifelse(is.null(opts$start), 0, opts$start)
-ws = ifelse(is.null(opts$window), 0.1, opts$window)
+ws = ifelse(is.null(opts$window), 0.1, as.numeric(opts$window))
 
 
+main$read_data(m, s, e)
 
-plotdata = data.frame(col = numeric(0), time = numeric(0), dat = numeric(0))
-print(peaks)
-for(i in 1:nrow(peaks)) {
-    print(sprintf('start2 %f %f', peaks[i,1], ws))
-    s = peaks[i, 1] - ws / 2
-    e = peaks[i, 1] + ws / 2
-    print(sprintf('start %f %f', s, e))
-    main$read_data(m, s, e)
-    t = r$time_track(start = s, end = e)
-    t = t - ret[i, 1]
-    dat = r$data
-    if(ret[i, 2] == '-') {
+print('gathering peak data...')
+peakdata = apply(peaks, 1, function(row) {
+    start = as.numeric(row[[1]])
+    s = start - ws / 2
+    e = start + ws / 2
+    sp = s/inc
+    ep = e/inc
+    dat = r$data[sp:ep]
+    t = seq(s, e, by = inc)
+    t = t[1:length(dat)]
+    if(row[[2]] == '-') {
         dat = -dat
     }
 
-    # rounding important here to avoid different values being collapsed. significant digits may change on sampling rate of tdms
-    plotdata = rbind(plotdata, data.frame(col = ret[i, ]$start, time = round(t, digits=5), data = dat))
-}
-
-for(i in unique(plotdata$col)) {
-    dat = plotdata[plotdata$col == i, ]$data
-    if(input$preBaselineSubtract) {
+    if(!is.null(opts$preBaselineSubtract)) {
         dat = dat - mean(dat[1:25])
     }
-    if(input$normalize) {
+    if(!is.null(opts$normalize)) {
         dat = (dat - min(dat)) / (max(dat) - min(dat))
     }
-    if(input$postBaselineSubtract) {
+    if(!is.null(opts$postBaselineSubtract)) {
         dat = dat - mean(dat[1:25])
     }
-    plotdata[plotdata$col == i, ]$data = dat
-}
+    # rounding important here to avoid different values being collapsed. significant digits may change on sampling rate of tdms
+    data.frame(col = start, time = round(t, digits=5), data = dat)
+})
 
-png(paste0(opts$file, '.average.png', width=800, height=600)
-myplot = ggplot(data=plotdata, aes(x=time, y=data)) + stat_summary(aes(y = data), fun.y=mean, geom='line')
-myplot
+print('combining data frames...')
+plotdata = do.call(rbind, peakdata)
+
+print('plotting average peak...')
+png(paste0(opts$file, '.average.png', width=800, height=600))
+ggplot(data=plotdata, aes(x=time, y=data)) + stat_summary(aes(y = data), fun.y=mean, geom='line')
 dev.off()
-png(paste0(opts$file, '.all.png', width=800, height=600)
-myplot = ggplot(data=plotdata, aes(x=time, y=data, group=col)) + geom_line()
-myplot
+
+print('plotting total peak...')
+png(paste0(opts$file, '.all.png', width=800, height=600))
+ggplot(data=plotdata, aes(x=time, y=data, group=col)) + geom_line()
 dev.off()
 
 #if(input$analyzeWaveform) {
