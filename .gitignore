@@ -6,3 +6,4 @@
 *.swp
 *.Rcheck
 tdmsreader*.tar.gz
+output.csv
