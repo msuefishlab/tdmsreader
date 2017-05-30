@@ -10,20 +10,23 @@ parser <- add_option(parser, c('-p', '--peak'), dest='peak', help='Peak file inp
 parser <- add_option(parser, c('-v', '--verbose'), dest='verbose', help='Print verbose output')
 parser <- add_option(parser, c('-c', '--channel'), dest='channel', help='Channel name')
 parser <- add_option(parser, c('-w', '--window'), dest='window', type = 'double', help='Window size around peak value')
-parser <- add_option(parser, c('-b', '--prebaseline'), dest='preBaselineSubtract', type = 'logical', help='Pre-normalization baseline subtract')
-parser <- add_option(parser, c('-d', '--postbaseline'), dest='postBaselineSubtract', type = 'logical', help='Post-normalization baseline subtract')
-parser <- add_option(parser, c('-n', '--normalize'), dest='normalize', type = 'logical', help='Normalize waveform between 0-1 peak to peak height')
+parser <- add_option(parser, c('-b', '--prebaseline'), dest='preBaselineSubtract', type = 'logical', action="store_true", help='Pre-normalization baseline subtract')
+parser <- add_option(parser, c('-d', '--postbaseline'), dest='postBaselineSubtract', type = 'logical', action="store_true", help='Post-normalization baseline subtract')
+parser <- add_option(parser, c('-n', '--normalize'), dest='normalize', type = 'logical', action="store_true", help='Normalize waveform between 0-1 peak to peak height')
 parser <- add_option(parser, c('-o', '--out'), dest='out', help='Output png')
 
 options = commandArgs(trailingOnly = TRUE)
 opts = parse_args(parser, args = options)
 
 if (is.null(opts$tdms) || is.null(opts$peak)) {
-    stop('Usage: eodplot -f <tdms file> -p <peak file>')
+    print_help(parser)
 }
 
 if (!file.exists(opts$tdms)) {
-    stop('File not found')
+    stop('TDMS file not found')
+}
+if (!file.exists(opts$tdms)) {
+    stop('Peak file not found')
 }
 m = file(opts$tdms, 'rb')
 main = TdmsFile$new(m)
@@ -38,7 +41,7 @@ inc = r$properties[['wf_increment']]
 max = r$number_values * inc
 e = ifelse(is.null(opts$end), max, opts$end)
 s = ifelse(is.null(opts$start), 0, opts$start)
-ws = ifelse(is.null(opts$window), 0.1, as.numeric(opts$window))
+ws = ifelse(is.null(opts$window), 0.005, as.numeric(opts$window))
 
 
 main$read_data(m, s, e)
@@ -51,12 +54,11 @@ peakdata = apply(peaks, 1, function(row) {
     sp = s/inc
     ep = e/inc
     dat = r$data[sp:ep]
-    t = seq(s, e, by = inc)
+    t = seq(s, e, by = inc) - s
     t = t[1:length(dat)]
     if(row[[2]] == '-') {
         dat = -dat
     }
-
     if(!is.null(opts$preBaselineSubtract)) {
         dat = dat - mean(dat[1:25])
     }
@@ -72,14 +74,15 @@ peakdata = apply(peaks, 1, function(row) {
 
 print('combining data frames...')
 plotdata = do.call(rbind, peakdata)
+plotdata=plotdata[1:100000,]
 
 print('plotting average peak...')
-png(paste0(opts$file, '.average.png', width=800, height=600))
+png(paste0(basename(opts$tdms), '.average.png'), width=1000, height=600)
 ggplot(data=plotdata, aes(x=time, y=data)) + stat_summary(aes(y = data), fun.y=mean, geom='line')
 dev.off()
 
 print('plotting total peak...')
-png(paste0(opts$file, '.all.png', width=800, height=600))
+png(paste0(basename(opts$tdms), '.all.png'), width=1000, height=600)
 ggplot(data=plotdata, aes(x=time, y=data, group=col)) + geom_line()
 dev.off()
 
