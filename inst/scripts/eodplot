@@ -180,14 +180,14 @@ if(opts$verbose) {
 png(paste0(basename(opts$file), '.average.png'), width=1000, height=600)
 myplot = ggplot(data=plotdata, aes(x=time, y=data)) + stat_summary(aes(y = data), fun.y=mean, geom='line')
 myplot + ggtitle(mtitle)
-dev.off()
+invisible(dev.off())
 if(opts$verbose) {
     print('plotting total peak...')
 }
 png(paste0(basename(opts$file), '.all.png'), width=1000, height=600)
 myplot2 = ggplot(data=plotdata, aes(x=time, y=data, group=col)) + geom_line(alpha=opts$alpha)
 myplot2 + ggtitle(mtitle)
-dev.off()
+invisible(dev.off())
 
 if(opts$verbose) {
     print('plotting average peak (with landmarks)...')
@@ -196,7 +196,7 @@ if(opts$verbose) {
 png(paste0(basename(opts$file), '.average.landmarks.png'), width=1000, height=600)
 myplot = myplot + geom_point(data = landmark_table, aes(x=time, y=val, color=landmark), size = 4) + scale_colour_brewer(palette = "Set1")
 myplot + ggtitle(mtitle)
-dev.off()
+invisible(dev.off())
 
 
 

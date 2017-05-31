@@ -9,7 +9,7 @@ parser <- add_option(parser, c('-c', '--channel'), default="/'Untitled'/'Dev1/ai
 parser <- add_option(parser, c('-t', '--type'), default="sigma", help='Peak finder type, cutoff or sigma')
 parser <- add_option(parser, c('-n', '--number'), type="double", default=5, help='Peak finder threshold, sigma or voltage threshold')
 parser <- add_option(parser, c('-d', '--direction'), default = "none", help='Direction, enter either positive/negative/none')
-parser <- add_option(parser, c('-w', '--whole'), default = T, type="logical", action="store_false", help="Remove first and last 15 seconds")
+parser <- add_option(parser, c('-w', '--whole'), default = F, type="logical", action="store_true", help="Remove first and last 15 seconds")
 
 options = commandArgs(trailingOnly = TRUE)
 opts = parse_args(parser, args = options)
@@ -29,8 +29,13 @@ if(is.null(r)) {
     stop('Channel not found')
 }
 max = r$number_values * r$properties[['wf_increment']]
-e = ifelse(opts$whole, max, max-15)
-s = ifelse(opts$whole, 0, 15)
+if(opts$whole) {
+    e = max-15
+    s = 15
+} else {
+    e = max
+    s = 0
+}
 
 main$read_data(m, s, e)
 t = r$time_track(start = s, end = e)
@@ -47,7 +52,7 @@ if(opts$direction == 'none' & opts$type == 'volts') {
 
 
 peaks = data.frame(peaks=numeric(), direction=character())
-for(i in 1:length(dat)) {
+for(i in seq(1,length(dat),by=3)) {
     ns = i - 1000
     ne = i + 1000
     if(opts$verbose & i%%100000==0) {
