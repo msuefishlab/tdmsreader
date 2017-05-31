@@ -8,7 +8,7 @@ suppressPackageStartupMessages(library('optparse'))
 parser <- OptionParser()
 parser <- add_option(parser, c('-f', '--file'), help='TDMS file input')
 parser <- add_option(parser, c('-p', '--peak'), help='Peak file input')
-parser <- add_option(parser, c('-v', '--verbose'), help='Print verbose output')
+parser <- add_option(parser, c('-v', '--verbose'), default=F, type="logical", action="store_true", help='Print verbose output')
 parser <- add_option(parser, c('-c', '--channel'), default = "/'Untitled'/'Dev1/ai0'", help='Channel name')
 parser <- add_option(parser, c('-w', '--window'), default = 0.005, type = 'double', help='Window size around peak value')
 parser <- add_option(parser, c('-b', '--prebaseline'), default=F, dest='preBaselineSubtract', type = 'logical', action="store_true", help='Pre-normalization baseline subtract')
@@ -46,7 +46,9 @@ s = ifelse(is.null(opts$start), 0, opts$start)
 main$read_data(m, s, e)
 close(m)
 
-print('gathering peak data...')
+if(opts$verbose) {
+    print('gathering peak data...')
+}
 peakdata = apply(peaks, 1, function(row) {
     start = as.numeric(row[[1]])
     s = start - opts$window / 2
@@ -71,8 +73,9 @@ peakdata = apply(peaks, 1, function(row) {
     # rounding important here to avoid different values being collapsed. significant digits may change on sampling rate of tdms
     data.frame(col = start, time = round(t, digits=5), data = dat)
 })
-
-print('combining data frames...')
+if(opts$verbose) {
+    print('combining data frames...')
+}
 plotdata = do.call(rbind, peakdata)
 
 
@@ -171,43 +174,29 @@ write.table(stats, paste0(basename(opts$file), '.stats.csv'), quote=F, row.names
 
 
 mtitle = basename(opts$file)
-
-print('plotting average peak...')
+if(opts$verbose) {
+    print('plotting average peak...')
+}
 png(paste0(basename(opts$file), '.average.png'), width=1000, height=600)
 myplot = ggplot(data=plotdata, aes(x=time, y=data)) + stat_summary(aes(y = data), fun.y=mean, geom='line')
 myplot + ggtitle(mtitle)
 dev.off()
-
-print('plotting total peak...')
+if(opts$verbose) {
+    print('plotting total peak...')
+}
 png(paste0(basename(opts$file), '.all.png'), width=1000, height=600)
 myplot2 = ggplot(data=plotdata, aes(x=time, y=data, group=col)) + geom_line(alpha=opts$alpha)
 myplot2 + ggtitle(mtitle)
 dev.off()
 
+if(opts$verbose) {
+    print('plotting average peak (with landmarks)...')
+}
 
-
-print('plotting average peak (with landmarks)...')
 png(paste0(basename(opts$file), '.average.landmarks.png'), width=1000, height=600)
 myplot = myplot + geom_point(data = landmark_table, aes(x=time, y=val, color=landmark), size = 4) + scale_colour_brewer(palette = "Set1")
 myplot + ggtitle(mtitle)
 dev.off()
 
-print('plotting total peak (with landmarks)...')
-png(paste0(basename(opts$file), '.all.landmarks.png'), width=1000, height=600)
-myplot2 = myplot2 + geom_point(data = landmark_table, aes(x=time, y=val, color=landmark), size = 4) + scale_colour_brewer(palette = "Set1")
-myplot2 + ggtitle(mtitle)
-dev.off()
-
-
-#if(input$drawTwoPercent) {
-#    ret = acast(plotdata, time ~ col, value.var = 'data', fun.aggregate = mean)
-#    avg = apply(ret, 1, mean)
-#    data = data.frame(time=as.numeric(names(avg)), val=as.numeric(avg))
-#
-#    baseline = mean(data$val[1:50])
-#    myplot = myplot + geom_hline(yintercept = baseline, color = 'red')
-#    myplot = myplot + geom_hline(yintercept = baseline + 0.02 * (r[r$landmark=='p1',]$val - r[r$landmark=='p2',]$val), color = 'yellow')
-#    myplot = myplot + geom_hline(yintercept = baseline - 0.02 * (r[r$landmark=='p1',]$val - r[r$landmark=='p2',]$val), color = 'green')
-#}
 
 

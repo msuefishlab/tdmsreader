@@ -21,7 +21,7 @@ if (is.null(opts$file)) {
 if (!file.exists(opts$file)) {
     stop('TDMS file not found')
 }
-m = file(opts$tdms, 'rb')
+m = file(opts$file, 'rb')
 main = TdmsFile$new(m)
 
 r = main$objects[[opts$channel]]
