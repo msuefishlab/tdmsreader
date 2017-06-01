@@ -165,7 +165,11 @@ landmark_table = rbind(landmark_table, data.frame(landmark = 'zc2', time = zc2$t
 
 
 
-stats = data.frame(amplitude=landmark_table[landmark_table$landmark=='p1',]$val - landmark_table[landmark_table$landmark=='p2',]$val,duration=landmark_table[landmark_table$landmark=='t2',]$time - landmark_table[landmark_table$landmark=='t1',]$time)
+stats = data.frame(
+    amplitude=landmark_table[landmark_table$landmark=='p1',]$val - landmark_table[landmark_table$landmark=='p2',]$val,
+    duration=landmark_table[landmark_table$landmark=='t2',]$time - landmark_table[landmark_table$landmark=='t1',]$time,
+    total_eods = nrow(peaks)
+)
 write.table(landmark_table, paste0(basename(opts$file), '.landmarks.csv'), quote=F, row.names=F)
 write.table(stats, paste0(basename(opts$file), '.stats.csv'), quote=F, row.names=F)
 
