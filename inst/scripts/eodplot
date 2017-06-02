@@ -160,23 +160,24 @@ for(i in 1:nrow(middle)) {
     }
 }
 
-
-landmark_table = data.frame(landmark = 'p0', time = p0$time, val = p0$val, mean = mean(p0_e$data), sd = sd(p0_e$data))
-landmark_table = rbind(landmark_table, data.frame(landmark = 'p1', time = p1$time, val = p1$val, mean = mean(p1_e$data), sd = sd(p1_e$data)))
-landmark_table = rbind(landmark_table, data.frame(landmark = 'p2', time = p2$time, val = p2$val, mean = mean(p2_e$data), sd = sd(p2_e$data)))
-landmark_table = rbind(landmark_table, data.frame(landmark = 't1', time = t1$time, val = t1$val, mean = mean(t1_e$data), sd = sd(t1_e$data)))
-landmark_table = rbind(landmark_table, data.frame(landmark = 't2', time = t2$time, val = t2$val, mean = mean(t2_e$data), sd = sd(t2_e$data)))
-landmark_table = rbind(landmark_table, data.frame(landmark = 's1', time = s1$time, val = s1$val, mean = mean(s1_e$data), sd = sd(s1_e$data)))
-landmark_table = rbind(landmark_table, data.frame(landmark = 's2', time = s2$time, val = s2$val, mean = mean(s2_e$data), sd = sd(s2_e$data)))
-landmark_table = rbind(landmark_table, data.frame(landmark = 'zc1', time = zc1$time, val = zc1$val, mean = mean(zc1_e$data), sd = sd(zc1_e$data)))
-landmark_table = rbind(landmark_table, data.frame(landmark = 'zc2', time = zc2$time, val = zc2$val, mean = mean(zc2_e$data), sd = sd(zc2_e$data)))
+print(head(p0_e$data, n=100))
+landmark_table = data.frame(landmark = 'p0', time = p0$time, val = p0$val, mean = mean(p0_e$data,na.rm=T), sd = sd(p0_e$data,na.rm=T))
+landmark_table = rbind(landmark_table, data.frame(landmark = 'p1', time = p1$time, val = p1$val, mean = mean(p1_e$data,na.rm=T), sd = sd(p1_e$data,na.rm=T)))
+landmark_table = rbind(landmark_table, data.frame(landmark = 'p2', time = p2$time, val = p2$val, mean = mean(p2_e$data,na.rm=T), sd = sd(p2_e$data,na.rm=T)))
+landmark_table = rbind(landmark_table, data.frame(landmark = 't1', time = t1$time, val = t1$val, mean = mean(t1_e$data,na.rm=T), sd = sd(t1_e$data,na.rm=T)))
+landmark_table = rbind(landmark_table, data.frame(landmark = 't2', time = t2$time, val = t2$val, mean = mean(t2_e$data,na.rm=T), sd = sd(t2_e$data,na.rm=T)))
+landmark_table = rbind(landmark_table, data.frame(landmark = 's1', time = s1$time, val = s1$val, mean = mean(s1_e$data,na.rm=T), sd = sd(s1_e$data,na.rm=T)))
+landmark_table = rbind(landmark_table, data.frame(landmark = 's2', time = s2$time, val = s2$val, mean = mean(s2_e$data,na.rm=T), sd = sd(s2_e$data,na.rm=T)))
+landmark_table = rbind(landmark_table, data.frame(landmark = 'zc1', time = zc1$time, val = zc1$val, mean = mean(zc1_e$data,na.rm=T), sd = sd(zc1_e$data,na.rm=T)))
+landmark_table = rbind(landmark_table, data.frame(landmark = 'zc2', time = zc2$time, val = zc2$val, mean = mean(zc2_e$data,na.rm=T), sd = sd(zc2_e$data,na.rm=T)))
 
 
 
 stats = data.frame(
     amplitude=landmark_table[landmark_table$landmark=='p1',]$val - landmark_table[landmark_table$landmark=='p2',]$val,
     duration=landmark_table[landmark_table$landmark=='t2',]$time - landmark_table[landmark_table$landmark=='t1',]$time,
-    total_eods = nrow(peaks)
+    total_eods = nrow(peaks),
+    
 )
 write.table(landmark_table, paste0(basename(opts$file), '.landmarks.csv'), quote=F, row.names=F)
 write.table(stats, paste0(basename(opts$file), '.stats.csv'), quote=F, row.names=F)
