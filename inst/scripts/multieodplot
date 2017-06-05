@@ -14,7 +14,7 @@ parser <- add_option(parser, c('-b', '--prebaseline'), default=F, dest='preBasel
 parser <- add_option(parser, c('-d', '--postbaseline'), default=F, dest='postBaselineSubtract', type = 'logical', action="store_true", help='Post-normalization baseline subtract')
 parser <- add_option(parser, c('-n', '--normalize'), default=F, type = 'logical', action="store_true", help='Normalize waveform between 0-1 peak to peak height')
 parser <- add_option(parser, c('-a', '--alpha'), default=0.05, type = 'double', help='Transparency factor aka alpha channel for plotting EODs')
-parser <- add_option(parser, c('-o', '--out'), help='Output png')
+parser <- add_option(parser, c('-p', '--pdf'), default=F, type="logical", action="store_true", help='Use PDF output')
 
 options = commandArgs(trailingOnly = TRUE)
 opts = parse_args(parser, args = options)
@@ -26,7 +26,7 @@ if (is.null(opts$file)) {
 if (!file.exists(opts$file)) {
     stop('TDMS file not found')
 }
-peaksets = read.table(opts$file, sep='\t',stringsAsFactors=F)
+peaksets = read.csv(opts$file, stringsAsFactors=F)
 totalplotdata = lapply(1:nrow(peaksets), function(i) {
     f = peaksets[i,1]
     p = peaksets[i,2]
@@ -77,8 +77,14 @@ totalplotdata = lapply(1:nrow(peaksets), function(i) {
 if(opts$verbose) {
     print('plotting average peak...')
 }
+
 totalplotdata = do.call(rbind, totalplotdata)
-png('alltdms.average.png', width=2000, height=900)
+
+if(opts$pdf) {
+    pdf('alltdms.average.pdf', width=20,height=9)
+} else {
+    png('alltdms.average.png', width=2000, height=900)
+}
 myplot = ggplot(data=totalplotdata, aes(x=time, y=data, color = filename, group = filename)) + stat_summary(aes(y = data), fun.y=mean, geom='line')
 myplot + ggtitle('Averaged peak data')
 invisible(dev.off())
@@ -87,7 +93,11 @@ invisible(dev.off())
 if(opts$verbose) {
     print('plotting total peak...')
 }
-png('alltdms.all.png', width=2000, height=900)
+if(opts$pdf) {
+    pdf('alltdms.all.pdf', width=20,height=9)
+} else {
+    png('alltdms.all.png', width=2000, height=900)
+}
 myplot2 = ggplot(data=totalplotdata, aes(x=time, y=data, group = col, color=filename)) + geom_line(alpha=opts$alpha) + guides(colour = guide_legend(override.aes = list(alpha=1)))
 myplot2 + ggtitle('Total peak data')
 invisible(dev.off())
