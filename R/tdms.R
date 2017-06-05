@@ -398,7 +398,7 @@ TdmsObject <- R6Class("TdmsObject",
             }
             num_vals = (end - start) / self$properties[['wf_increment']]
             if (num_vals > self$number_values) {
-                print("Start/end bigger than specified data")
+                print("Start/end bigger than specified data, setting to max number of values in file")
                 num_vals = self$number_values
             }
             self$data = numeric(num_vals)
