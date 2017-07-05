@@ -176,7 +176,13 @@ TdmsSegment <- R6Class("TdmsSegment",
             #fl("raw_data_offset %d next_segment_offset %d", self$raw_data_offset, self$next_segment_offset)
             #fl("raw_data_offset %016x next_segment_offset %016x", self$raw_data_offset, self$next_segment_offset)
             self$data_position = self$position + lead_size + self$raw_data_offset
-            self$next_segment_pos = self$position + self$next_segment_offset + lead_size
+            if(self$next_segment_offset == -1) {
+                print("Last segment of file has unknown size, not attempting to read it")
+                self$next_segment_offset = NULL
+                self$next_segment_pos = NULL
+            } else {
+                self$next_segment_pos = self$position + self$next_segment_offset + lead_size
+            }
         },
 
         calculate_chunks = function() {
@@ -186,9 +192,11 @@ TdmsSegment <- R6Class("TdmsSegment",
             data_size = sum(unlist(ds))
 
 
-            total_data_size = self$next_segment_offset - self$raw_data_offset
             #fl('total size %d data_size %d', total_data_size, data_size)
-
+            total_data_size = self$next_segment_offset - self$raw_data_offset
+            if(identical(total_data_size, integer(0))) {
+                return(NULL)
+            }
             if (data_size < 0 || total_data_size < 0) {
                 stop("Negative data size")
             } else if (data_size == 0) {
