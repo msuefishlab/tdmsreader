@@ -53,7 +53,7 @@ read_type <- function(f, type) {
 }
 
 #' TdmsFile class
-#' 
+#'
 #' @docType class
 #' @importFrom R6 R6Class
 #' @export
@@ -89,23 +89,23 @@ TdmsFile <- R6Class("TdmsFile",
                 i = i + 1
             }
         },
-        read_data = function(file, start = NULL, end = NULL) {
+        read_data = function(file, start = NULL, end = NULL, sample_rate=NULL) {
             for (elt in ls(self$objects)) {
                 obj = self$objects[[elt]]
                 if (obj$has_data) {
-                    obj$initialize_data(start, end)
+                    obj$initialize_data(start, end, sample_rate)
                 }
             }
 
             for (segment in self$segments) {
-                segment$read_raw_data(file, start, end)
+                segment$read_raw_data(file, start, end, sample_rate)
             }
         }
     )
 )
 
 #' TdmsSegment class
-#' 
+#'
 #' @docType class
 #' @importFrom R6 R6Class
 #' @export
@@ -294,9 +294,9 @@ TdmsSegment <- R6Class("TdmsSegment",
             self$calculate_chunks()
         },
 
-        read_raw_data = function(f, start = NULL, end = NULL) {
+        read_raw_data = function(f, start = NULL, end = NULL, sample_rate=NULL) {
             if (!self$kTocRawData) {
-                #fl("No raw data in segment")
+                fl("No raw data in segment")
                 return
             }
             seek(f, self$data_position)
@@ -312,6 +312,7 @@ TdmsSegment <- R6Class("TdmsSegment",
                         if (obj$has_data) {
                             n = obj$number_values
                             inc = obj$tdms_object$properties[['wf_increment']]
+                            inc = if(is.null(inc)) 1/sample_rate else inc
                             tr = obj$tdms_object$read_so_far
                             s = 1
                             e = n
@@ -354,7 +355,7 @@ TdmsSegment <- R6Class("TdmsSegment",
 )
 
 #' TdmsObject class
-#' 
+#'
 #' @docType class
 #' @importFrom R6 R6Class
 #' @export
@@ -392,19 +393,26 @@ TdmsObject <- R6Class("TdmsObject",
             self$data[p:s] = d
             self$data_insert_position = self$data_insert_position + length(d)
         },
-        time_track = function(absolute_time = FALSE, accuracy = 'ns', start = NULL, end = NULL) {
+        time_track = function(absolute_time = FALSE, accuracy = 'ns', start = NULL, end = NULL, sample_rate=NULL) {
             increment = self$properties[['wf_increment']]
+
+            increment = if(is.null(increment)) 1/sample_rate else increment
+            print(increment)
             offset = self$properties[['wf_start_offset']]
+            offset = if(is.null(offset)) 0 else offset
             len = length(self$data)
-            num_vals = (end - start) / self$properties[['wf_increment']]
+            num_vals = (end - start) / increment
             ret = (1:num_vals * increment) + offset + start
             return (ret[1:length(self$data)])
         },
-        initialize_data = function(start = NULL, end = NULL) {
+        initialize_data = function(start = NULL, end = NULL, sample_rate=NULL) {
+            increment = self$properties[['wf_increment']]
+            increment = if(is.null(increment)) 1/sample_rate else increment
+            print(increment)
             if (self$number_values == 0) {
                 # non-data or metadata segment
             }
-            num_vals = (end - start) / self$properties[['wf_increment']]
+            num_vals = (end - start) / increment
             if (num_vals > self$number_values) {
                 print("Start/end bigger than specified data, setting to max number of values in file")
                 num_vals = self$number_values
@@ -415,7 +423,7 @@ TdmsObject <- R6Class("TdmsObject",
 )
 
 #' TdmsSegmentObject class
-#' 
+#'
 #' @docType class
 #' @importFrom R6 R6Class
 #' @export
